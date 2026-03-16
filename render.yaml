@@ -7,23 +7,12 @@ services:
     healthCheckPath: /
     envVars:
       - key: SPRING_DATASOURCE_URL
-        fromDatabase:
-          name: erp-hrm-db
-          property: connectionString
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        fromDatabase:
-          name: erp-hrm-db
-          property: user
+        sync: false
       - key: SPRING_DATASOURCE_PASSWORD
-        fromDatabase:
-          name: erp-hrm-db
-          property: password
+        sync: false
       - key: SPRING_PROFILES_ACTIVE
         value: production
       - key: JAVA_OPTS
         value: -Xms256m -Xmx512m
-
-databases:
-  - name: erp-hrm-db
-    databaseName: erp_hrm
-    user: admin
