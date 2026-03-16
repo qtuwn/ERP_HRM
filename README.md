@@ -9,8 +9,6 @@ ERP_HRM la du an Spring Boot quan ly quy trinh tuyen dung, su dung PostgreSQL la
 - Maven Wrapper
 - PostgreSQL 15
 - Docker, Docker Compose
-- GitHub Actions
-- Render
 
 ## Chay local bang Docker
 
@@ -81,92 +79,11 @@ Hoac build jar:
 java -jar target\erp-hrm-0.0.1-SNAPSHOT.jar
 ```
 
-## CI/CD voi GitHub Actions va Render
-
-Repo da duoc cau hinh san:
-
-- CI workflow: `.github/workflows/ci.yml`
-- CD workflow: `.github/workflows/deploy-render.yml`
-- Render blueprint: `render.yaml`
-
-### CI
-
-Chay khi push/PR vao `develop` va `main`, va build bang:
-
-```bash
-./mvnw -DskipTests package
-```
-
-### CD
-
-Trigger deploy Render khi CI thanh cong tren `main` (hoac chay tay workflow dispatch).
-
-Ban can tao GitHub Secret:
-
-- Name: `RENDER_DEPLOY_HOOK_URL`
-- Value: Deploy Hook URL tu Render service
-
-## Huong dan Render
-
-### 1. Tao service bang Blueprint (khong tao DB tren Render)
-
-1. Vao Render dashboard.
-2. Chon New -> Blueprint.
-3. Chon repo `qtuwn/ERP_HRM`.
-4. Render doc `render.yaml` va chi tao web service `erp-hrm`.
-
-### 2. Tao database tren Supabase (free)
-
-1. Vao Supabase -> New project.
-2. Sau khi tao xong, vao Project Settings -> Database.
-3. Lay cac thong tin:
-
-- Host
-- Port (thuong la 5432)
-- Database name (thuong la postgres)
-- User (thuong la postgres)
-- Password
-
-1. Tao JDBC URL theo mau:
-
-```text
-jdbc:postgresql://<HOST>:5432/postgres?sslmode=require
-```
-
-### 3. Set Environment variables tren Render
-
-Vao service `erp-hrm` -> Environment, them:
-
-- `SPRING_DATASOURCE_URL` = JDBC URL Supabase
-- `SPRING_DATASOURCE_USERNAME` = user Supabase
-- `SPRING_DATASOURCE_PASSWORD` = password Supabase
-- `SPRING_PROFILES_ACTIVE` = production
-
-### 4. Tao Deploy Hook
-
-1. Mo service `erp-hrm`.
-2. Vao Settings.
-3. Tim Deploy Hook va tao hook moi.
-4. Copy URL.
-
-### 5. Them GitHub secret
-
-1. Vao GitHub repo -> Settings -> Secrets and variables -> Actions.
-2. Tao secret `RENDER_DEPLOY_HOOK_URL` voi gia tri la hook URL vua copy.
-
-### 6. Deploy
-
-- Merge code vao `main`.
-- GitHub Actions se trigger deploy Render.
-
 ## File quan trong
 
 - `Dockerfile`
 - `docker-compose.yml`
 - `.env.example`
-- `render.yaml`
-- `.github/workflows/ci.yml`
-- `.github/workflows/deploy-render.yml`
 - `CONTRIBUTING.md`
 
 ## Lenh thuong dung
