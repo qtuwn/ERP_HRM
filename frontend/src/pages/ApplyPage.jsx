@@ -14,6 +14,7 @@ function isValidCvFile(file) {
   return byType || byExt
 }
 
+// Luồng ứng tuyển: chọn CV (upload hoặc kho) và gửi hồ sơ theo từng bước.
 export function ApplyPage() {
   const { jobId } = useParams()
   const navigate = useNavigate()
