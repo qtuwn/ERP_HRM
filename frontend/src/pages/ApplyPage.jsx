@@ -14,6 +14,22 @@ function isValidCvFile(file) {
   return byType || byExt
 }
 
+const CV_MAX_BYTES = 5 * 1024 * 1024
+const NOTE_MAX_LENGTH = 2000
+
+function formatFileSize(bytes) {
+  if (bytes == null || Number.isNaN(bytes)) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
+function cvFileKind(file) {
+  const n = file?.name?.toLowerCase?.() || ''
+  if (n.endsWith('.docx')) return 'docx'
+  return 'pdf'
+}
+
 // Luồng ứng tuyển: chọn CV (upload hoặc kho) và gửi hồ sơ theo từng bước.
 export function ApplyPage() {
   const { jobId } = useParams()
@@ -57,13 +73,17 @@ export function ApplyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.role])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [step])
+
   function validateAndSetFile(f) {
     if (!isValidCvFile(f)) {
       alert('Chỉ được tải lên PDF hoặc DOCX.')
       return
     }
-    if (f.size > 5 * 1024 * 1024) {
-      alert('Dung lượng file vượt quá 5MB.')
+    if (f.size > CV_MAX_BYTES) {
+      alert(`Dung lượng file vượt quá ${formatFileSize(CV_MAX_BYTES)} (file của bạn: ${formatFileSize(f.size)}).`)
       return
     }
     setFile(f)
@@ -118,6 +138,7 @@ export function ApplyPage() {
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex flex-col items-center gap-2 bg-white dark:bg-slate-900 px-2">
                 <div
+                  aria-current={step === s ? 'step' : undefined}
                   className={[
                     'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors border-2',
                     step >= s
@@ -302,20 +323,25 @@ export function ApplyPage() {
                     />
                   </label>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
-                    Chỉ chấp nhận file PDF hoặc DOCX (Max 5MB).
+                    Chỉ chấp nhận file PDF hoặc DOCX (tối đa {formatFileSize(CV_MAX_BYTES)}).
                   </p>
                 </div>
               ) : (
                 <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-lg shadow-sm text-left max-w-sm mx-auto">
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-300 flex items-center justify-center shrink-0">
-                      PDF
+                    <div
+                      className={[
+                        'w-8 h-8 rounded flex items-center justify-center shrink-0 text-[10px] font-bold',
+                        cvFileKind(file) === 'docx'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                          : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-300',
+                      ].join(' ')}
+                    >
+                      {cvFileKind(file) === 'docx' ? 'DOCX' : 'PDF'}
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{formatFileSize(file.size)}</p>
                     </div>
                   </div>
                   <button
@@ -344,11 +370,15 @@ export function ApplyPage() {
               </label>
               <textarea
                 value={note}
+                maxLength={NOTE_MAX_LENGTH}
                 onChange={(e) => setNote(e.target.value)}
                 rows={5}
                 className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] outline-none text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 resize-none"
                 placeholder="Viết giới thiệu ngắn về bản thân..."
               />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-right">
+                {note.length}/{NOTE_MAX_LENGTH} ký tự
+              </p>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               (Hiện backend chưa nhận field này; UI giữ lại để parity, sẽ wire API sau nếu bạn muốn.)
