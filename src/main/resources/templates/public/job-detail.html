@@ -9,7 +9,7 @@
     </div>
 
     <!-- Content -->
-    <div x-show="!loading && job" style="display: none;">
+    <div x-show="!loading &amp;&amp; job" style="display: none;">
         <!-- Header -->
         <div class="bg-white rounded-xl shadow-sm border p-8 mb-6 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-2 h-full bg-primary"></div>
@@ -29,9 +29,16 @@
                     </div>
                 </div>
                 <div>
-                    <a :href="'/jobs/' + job?.id + '/apply'" class="inline-flex items-center justify-center bg-primary text-white font-medium px-8 py-3 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:-translate-y-0.5 transition-all w-full sm:w-auto">
-                        Ứng Tuyển Ngay
-                    </a>
+                    <template x-if="user &amp;&amp; ['ADMIN', 'HR'].includes(user.role)">
+                        <a :href="'/jobs/' + job?.id + '/kanban'" class="inline-flex items-center justify-center bg-slate-800 text-white font-medium px-8 py-3 rounded-xl hover:bg-slate-900 transition-all w-full sm:w-auto">
+                            Xem hồ sơ (Kanban)
+                        </a>
+                    </template>
+                    <template x-if="!user || !['ADMIN', 'HR'].includes(user.role)">
+                        <a :href="'/jobs/' + job?.id + '/apply'" class="inline-flex items-center justify-center bg-primary text-white font-medium px-8 py-3 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:-translate-y-0.5 transition-all w-full sm:w-auto">
+                            Ứng Tuyển Ngay
+                        </a>
+                    </template>
                 </div>
             </div>
         </div>
@@ -67,7 +74,7 @@
         </div>
     </div>
     
-    <div x-show="!loading && !job" class="text-center py-20 bg-white rounded-xl border mt-6" style="display: none;">
+    <div x-show="!loading &amp;&amp; !job" class="text-center py-20 bg-white rounded-xl border mt-6" style="display: none;">
         <h2 class="text-2xl font-bold text-slate-800 mb-2">Không tìm thấy!</h2>
         <p class="text-slate-500 mb-6">Công việc này có thể đã đóng hoặc không tồn tại.</p>
         <a href="/jobs" class="text-primary hover:underline font-medium">Trở về Về danh sách</a>

@@ -12,6 +12,9 @@ public interface JobRepository {
     Optional<Job> findById(UUID id);
     Page<Job> findAll(Pageable pageable);
     Page<Job> findByStatus(JobStatus status, Pageable pageable);
+    java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
+    long count();
+    long countByStatus(JobStatus status);
     Job save(Job job);
     void deleteById(UUID id);
 }

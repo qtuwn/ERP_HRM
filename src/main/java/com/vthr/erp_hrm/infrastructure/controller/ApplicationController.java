@@ -26,6 +26,7 @@ import java.util.UUID;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final com.vthr.erp_hrm.core.service.JobService jobService;
     private final FileStorageService fileStorageService;
     private final SignedUrlService signedUrlService;
 
@@ -43,10 +44,10 @@ public class ApplicationController {
             @PathVariable UUID jobId,
             @RequestParam("cv") MultipartFile cv,
             Authentication authentication) throws IOException {
-        
+
         UUID candidateId = UUID.fromString(authentication.getName());
         String cvLogicalPath = fileStorageService.storeFile(cv, jobId);
-        
+
         Application app = applicationService.applyForJob(jobId, candidateId, cvLogicalPath);
         return ResponseEntity.ok(ApiResponse.success(mapAndSignUrl(app), "Applied successfully"));
     }
@@ -64,7 +65,8 @@ public class ApplicationController {
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse>>> getKanbanApplications(
             @PathVariable UUID jobId) {
-        java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> apps = applicationService.getKanbanApplications(jobId);
+        java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> apps = applicationService
+                .getKanbanApplications(jobId);
         apps.forEach(res -> {
             if (res.getCvUrl() != null) {
                 res.setCvUrl(signedUrlService.generateSignedUrl("/api/files/cvs", res.getCvUrl()));
@@ -79,8 +81,22 @@ public class ApplicationController {
             Authentication authentication, Pageable pageable) {
         UUID candidateId = UUID.fromString(authentication.getName());
         Page<ApplicationResponse> apps = applicationService.getApplicationsByCandidateId(candidateId, pageable)
-                .map(this::mapAndSignUrl);
+                .map(app -> {
+                    ApplicationResponse res = mapAndSignUrl(app);
+                    res.setJobTitle(jobService.getPublicJobById(app.getJobId()).getTitle());
+                    return res;
+                });
         return ResponseEntity.ok(ApiResponse.success(apps, "Fetched your applications successfully"));
+    }
+
+    @GetMapping("/users/me/applications/{id}")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<ApiResponse<com.vthr.erp_hrm.infrastructure.controller.response.CandidateApplicationDetailResponse>> getMyApplicationDetail(
+            @PathVariable UUID id, Authentication authentication) {
+        UUID candidateId = UUID.fromString(authentication.getName());
+        com.vthr.erp_hrm.infrastructure.controller.response.CandidateApplicationDetailResponse detail = applicationService
+                .getApplicationDetailForCandidate(id, candidateId);
+        return ResponseEntity.ok(ApiResponse.success(detail, "Fetched application detail successfully"));
     }
 
     @PatchMapping("/applications/{id}/status")
@@ -90,7 +106,18 @@ public class ApplicationController {
             @Valid @RequestBody ApplicationUpdateRequest request,
             Authentication authentication) {
         UUID changedBy = UUID.fromString(authentication.getName());
-        Application updated = applicationService.updateApplicationStatus(id, request.getStatus(), changedBy, request.getNote());
+        Application updated = applicationService.updateApplicationStatus(id, request.getStatus(), changedBy,
+                request.getNote());
         return ResponseEntity.ok(ApiResponse.success(mapAndSignUrl(updated), "Updated status successfully"));
+    }
+
+    @PostMapping("/applications/bulk-reject")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> bulkRejectApplications(
+            @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.BulkRejectRequest request,
+            Authentication authentication) {
+        UUID hrId = UUID.fromString(authentication.getName());
+        applicationService.bulkRejectApplications(request.getApplicationIds(), hrId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Bulk rejection processed successfully"));
     }
 }

@@ -11,7 +11,7 @@ import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.core.service.ApplicationService;
 import com.vthr.erp_hrm.core.service.InterviewService;
-import com.vthr.erp_hrm.infrastructure.mail.EmailNotificationService;
+import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +28,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
-    private final EmailNotificationService emailService;
+    private final EmailQueueService emailQueueService;
     private final ApplicationService applicationService;
 
     @Override
@@ -53,12 +53,18 @@ public class InterviewServiceImpl implements InterviewService {
         
         if (job != null && candidate != null) {
             String timeStr = interviewTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm z"));
-            emailService.sendInterviewInvitation(
+            emailQueueService.enqueueEmail(
                     candidate.getEmail(),
-                    candidate.getFullName(),
-                    job.getTitle(),
-                    timeStr,
-                    locationOrLink
+                    "Thư mời Phỏng Vấn: " + job.getTitle(),
+                    "interview_invite",
+                    java.util.Map.of(
+                            "candidateName", candidate.getFullName(),
+                            "jobTitle", job.getTitle(),
+                            "interviewDate", timeStr,
+                            "interviewFormat", locationOrLink != null && locationOrLink.toLowerCase().contains("http") ? "Phỏng vấn Online (Video Call)" : "Phỏng vấn Trực tiếp (Offline)",
+                            "interviewLocation", locationOrLink != null ? locationOrLink : "Sẽ thông báo chi tiết sau",
+                            "interviewNote", "Vui lòng xem kỹ file Đính kèm hoặc chuẩn bị kỹ thuật trước khi tham gia."
+                    )
             );
         }
 

@@ -43,4 +43,14 @@ public class ViewController {
     public String kanbanBoard(@PathVariable UUID id) {
         return "hr/kanban-board";
     }
+
+    @GetMapping("/candidate/applications")
+    public String candidateApplications() {
+        return "candidate/applications";
+    }
+
+    @GetMapping("/profile")
+    public String userProfile() {
+        return "candidate/profile";
+    }
 }

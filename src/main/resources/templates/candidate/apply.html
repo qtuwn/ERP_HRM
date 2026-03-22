@@ -120,7 +120,6 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         const targetJobId = window.location.pathname.split('/')[2];
-        /*]]>*/
 
         document.addEventListener('alpine:init', () => {
             Alpine.data('applyForm', () => ({
@@ -195,6 +194,7 @@
                 }
             }));
         });
+        /*]]>*/
     </script>
 </section>
 </html>

@@ -150,37 +150,37 @@
 > Goal: Realtime collaboration và thông báo tự động.
 
 ### TASK 16 — WebSocket Auth + Room
-- [ ] Spring WebSocket/STOMP auth bằng JWT.
-- [ ] Room/job channel cho HR collaboration.
-- [ ] Event: application:new, application:stage_changed, application:viewing.
+- [x] Spring WebSocket/STOMP auth bằng JWT.
+- [x] Room/job channel cho HR collaboration.
+- [x] Event: application:new, application:stage_changed, application:viewing.
 
 **Acceptance:** 2 HR mở cùng job thấy cập nhật realtime.
 
 ### TASK 17 — In-app Chat Backend
-- [ ] Entity `Message`: applicationId, senderId, senderRole, content, readAt.
-- [ ] API history + gửi tin nhắn REST fallback.
-- [ ] Event chat realtime + typing indicator.
+- [x] Entity `Message`: applicationId, senderId, senderRole, content, readAt.
+- [x] API history + gửi tin nhắn REST fallback.
+- [x] Event chat realtime + typing indicator.
 
 **Acceptance:** HR/candidate chat realtime theo application.
 
 ### TASK 18 — In-app Chat UI
-- [ ] ChatBox + MessageBubble + TypingIndicator.
-- [ ] Infinite scroll lịch sử, read receipt.
-- [ ] Tích hợp vào trang review HR + candidate detail.
+- [x] ChatBox + MessageBubble + TypingIndicator.
+- [x] Infinite scroll lịch sử, read receipt.
+- [x] Tích hợp vào trang review HR + candidate detail.
 
 **Acceptance:** Chat 2 chiều ổn định.
 
 ### TASK 19 — Email Queue + Templates
-- [ ] Queue `email_notifications`.
-- [ ] Trigger: apply_confirm, interview_invite, rejected, hired, chat_notification.
-- [ ] HTML templates tiếng Việt.
-- [ ] Log trạng thái gửi email vào DB.
+- [x] Queue `email_notifications`.
+- [x] Trigger: apply_confirm, interview_invite, rejected, hired, chat_notification.
+- [x] HTML templates tiếng Việt.
+- [x] Log trạng thái gửi email vào DB.
 
 **Acceptance:** Đổi stage đúng trigger email tương ứng.
 
 ### TASK 20 — Schedule Modal UI
-- [ ] Modal bắt buộc khi kéo card sang `Phỏng vấn`.
-- [ ] Cancel -> rollback card, Confirm -> gửi scheduleData.
+- [x] Modal bắt buộc khi kéo card sang `Phỏng vấn`.
+- [x] Cancel -> rollback card, Confirm -> gửi scheduleData.
 
 **Acceptance:** Không thể vào stage Interview nếu thiếu lịch.
 
@@ -190,35 +190,35 @@
 > Goal: Demo-ready production-like.
 
 ### TASK 21 — Candidate Portal
-- [ ] Danh sách hồ sơ đã nộp + timeline stage.
-- [ ] Trang chi tiết: lịch phỏng vấn, AI summary, chat, tải CV.
+- [x] Danh sách hồ sơ đã nộp + timeline stage.
+- [x] Trang chi tiết: lịch phỏng vấn, AI summary, chat, tải CV.
 
 **Acceptance:** Candidate theo dõi toàn bộ trạng thái ứng tuyển.
 
 ### TASK 22 — Admin Analytics
-- [ ] API thống kê: source distribution, stage conversion, AI vs HR accuracy, discrepancy rate.
-- [ ] Dashboard biểu đồ.
+- [x] API thống kê: source distribution, stage conversion, AI vs HR accuracy, discrepancy rate.
+- [x] Dashboard biểu đồ.
 
 **Acceptance:** Admin xem số liệu thật theo thời gian.
 
 ### TASK 23 — Job Expiry Cron
-- [ ] Scheduler auto-close job hết hạn mỗi giờ.
-- [ ] Gửi email thông báo HR khi job auto-closed.
+- [x] Scheduler auto-close job hết hạn mỗi giờ.
+- [x] Gửi email thông báo HR khi job auto-closed.
 
 **Acceptance:** Job quá hạn tự chuyển closed.
 
 ### TASK 24 — Bulk Reject + Bulk Email
-- [ ] Multi-select card trên Kanban.
-- [ ] API bulk reject gọi StageChangeService cho từng hồ sơ.
-- [ ] Batch enqueue email.
+- [x] Multi-select card trên Kanban.
+- [x] API bulk reject gọi StageChangeService cho từng hồ sơ.
+- [x] Batch enqueue email.
 
 **Acceptance:** Reject hàng loạt có summary succeeded/failed.
 
 ### TASK 25 — Test + CI + Docker Release
-- [ ] Unit test service quan trọng.
-- [ ] Integration test API chính.
-- [ ] UI test cơ bản theo stack giao diện đang dùng (Thymeleaf + JS).
-- [ ] CI chạy test + build Docker image.
+- [x] Unit test service quan trọng.
+- [x] Integration test API chính.
+- [x] UI test cơ bản theo stack giao diện đang dùng (Thymeleaf + JS).
+- [x] CI chạy test + build Docker image.
 
 **Acceptance:** CI xanh, image build thành công.
 
@@ -226,15 +226,15 @@
 
 ## FINAL CHECKLIST
 
-- [ ] Chạy local bằng Docker Compose không lỗi.
-- [ ] Không hardcode secret.
-- [ ] PostgreSQL migration chạy sạch từ đầu.
-- [ ] JWT hết hạn trả đúng 401.
-- [ ] Duplicate application trả 409.
-- [ ] Upload file sai loại trả 400.
-- [ ] Tất cả text UI tiếng Việt.
-- [ ] Socket expired token bị từ chối.
-- [ ] Không lộ stack trace ở production.
+- [x] Chạy local bằng Docker Compose không lỗi.
+- [x] Không hardcode secret.
+- [x] PostgreSQL migration chạy sạch từ đầu.
+- [x] JWT hết hạn trả đúng 401.
+- [x] Duplicate application trả 409.
+- [x] Upload file sai loại trả 400.
+- [x] Tất cả text UI tiếng Việt.
+- [x] Socket expired token bị từ chối.
+- [x] Không lộ stack trace ở production.
 
 ---
 

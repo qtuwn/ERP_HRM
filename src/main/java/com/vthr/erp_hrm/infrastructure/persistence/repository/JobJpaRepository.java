@@ -11,4 +11,6 @@ import java.util.UUID;
 @Repository
 public interface JobJpaRepository extends JpaRepository<JobEntity, UUID> {
     Page<JobEntity> findByStatus(String status, Pageable pageable);
+    java.util.List<JobEntity> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
+    long countByStatus(String status);
 }

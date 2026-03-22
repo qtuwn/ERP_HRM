@@ -44,7 +44,12 @@
                         localStorage.setItem('user', JSON.stringify(res.data.user));
                         
                         Swal.fire({ icon: 'success', title: 'Thành công', text: 'Đăng nhập thành công!', timer: 1500, showConfirmButton: false }).then(() => {
-                            window.location.href = '/jobs';
+                            const userRole = res.data.user.role;
+                            if (userRole === 'ADMIN' || userRole === 'HR') {
+                                window.location.href = '/dashboard';
+                            } else {
+                                window.location.href = '/jobs';
+                            }
                         });
                     } catch (err) {
                         Swal.fire({ icon: 'error', title: 'Lỗi', text: err.data?.message || 'Sai thông tin đăng nhập' });

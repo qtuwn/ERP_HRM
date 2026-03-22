@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -59,6 +61,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
+        log.error("Unhandled RuntimeException caught: ", ex);
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         
         if (ex.getMessage() != null) {
@@ -67,8 +70,10 @@ public class GlobalExceptionHandler {
                 status = HttpStatus.UNAUTHORIZED;
             } else if (msg.contains("not found")) {
                 status = HttpStatus.NOT_FOUND;
-            } else if (msg.contains("already exists")) {
+            } else if (msg.contains("already exists") || msg.contains("already applied")) {
                 status = HttpStatus.CONFLICT;
+            } else if (msg.contains("invalid file") || msg.contains("unsupported") || msg.contains("size exceeded")) {
+                status = HttpStatus.BAD_REQUEST;
             }
         }
         
@@ -82,6 +87,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception ex) {
+        log.error("Unhandled Exception caught: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ErrorResponse.builder()
                         .success(false)

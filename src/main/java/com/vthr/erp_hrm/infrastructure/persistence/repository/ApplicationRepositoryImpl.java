@@ -37,6 +37,16 @@ public class ApplicationRepositoryImpl implements ApplicationRepository {
     }
 
     @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
+    public long countByStatus(String status) {
+        return jpaRepository.countByStatus(status);
+    }
+
+    @Override
     public Page<Application> findByCandidateId(UUID candidateId, Pageable pageable) {
         return jpaRepository.findByCandidateId(candidateId, pageable).map(ApplicationMapper::toDomain);
     }

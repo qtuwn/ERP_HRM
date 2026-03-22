@@ -12,6 +12,8 @@ public interface ApplicationRepository {
     Optional<Application> findById(UUID id);
     Page<Application> findByJobId(UUID jobId, Pageable pageable);
     List<Application> findByJobId(UUID jobId);
+    long count();
+    long countByStatus(String status);
     Page<Application> findByCandidateId(UUID candidateId, Pageable pageable);
     boolean existsByJobIdAndCandidateId(UUID jobId, UUID candidateId);
     Application save(Application application);

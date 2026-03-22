@@ -35,6 +35,24 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     @Override
+    public java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt) {
+        return jobJpaRepository.findByStatusAndExpiresAtBefore(status, expiresAt)
+                .stream()
+                .map(JobMapper::toDomain)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public long count() {
+        return jobJpaRepository.count();
+    }
+
+    @Override
+    public long countByStatus(JobStatus status) {
+        return jobJpaRepository.countByStatus(status.name());
+    }
+
+    @Override
     public Job save(Job job) {
         JobEntity entity = JobMapper.toEntity(job);
         JobEntity saved = jobJpaRepository.save(entity);

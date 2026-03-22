@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #2563eb; margin-top: 0;">Tin Nhắn Mới Nhận Trên Hệ Thống</h2>
+        <p>Chào <strong>[[${recipientName}]]</strong>,</p>
+        <p>Bạn vừa nhận được một tin nhắn mới từ <strong>[[${senderRole}]]</strong> liên quan đến hồ sơ ứng tuyển <strong>[[${applicationId}]]</strong>.</p>
+        <div style="background: #f1f5f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-style: italic; color: #475569;">
+            "[[${messagePreview}]]"
+        </div>
+        <p>Vui lòng đăng nhập vào ứng dụng VTHR Solutions để xem chi tiết và trả lời tin nhắn này.</p>
+        <p>Trân trọng,<br><strong>VTHR System</strong></p>
+    </div>
+</body>
+</html>

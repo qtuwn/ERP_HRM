@@ -26,15 +26,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(Customizer.withDefaults())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs", "/api/jobs/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs", "/api/jobs/**")
+                        .permitAll()
+                        .requestMatchers(
+                                "/", "/login", "/register",
+                                "/jobs", "/jobs/**",
+                                "/dashboard", "/jobs/*/kanban",
+                                "/candidate/applications", "/profile",
+                                "/css/**", "/js/**", "/images/**", "/error")
+                        .permitAll()
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/applications/*/status")
+                        .hasAnyRole("ADMIN", "HR")
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/applications/bulk-reject")
+                        .hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/applications/**").authenticated()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter()
+                            .write("{\"success\":false,\"message\":\"Unauthorized: Token expired or invalid\"}");
+                }));
         return http.build();
     }
 

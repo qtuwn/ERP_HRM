@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface ApplicationJpaRepository extends JpaRepository<ApplicationEntity, UUID> {
     Page<ApplicationEntity> findByJobId(UUID jobId, Pageable pageable);
     List<ApplicationEntity> findByJobId(UUID jobId);
+    long countByStatus(String status);
     Page<ApplicationEntity> findByCandidateId(UUID candidateId, Pageable pageable);
     boolean existsByJobIdAndCandidateId(UUID jobId, UUID candidateId);
 }
