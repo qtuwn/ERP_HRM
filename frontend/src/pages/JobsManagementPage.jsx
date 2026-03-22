@@ -53,6 +53,7 @@ const emptyForm = (department) => ({
   expiresAt: '',
 })
 
+// Quản lý tin tuyển dụng: CRUD, mở/đóng theo trạng thái và phân trang.
 export function JobsManagementPage() {
   const user = useMemo(() => getUser(), [])
   const userDepartment = user?.department || ''
