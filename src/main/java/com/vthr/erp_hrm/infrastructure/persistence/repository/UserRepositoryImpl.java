@@ -6,6 +6,8 @@ import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.UserEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,6 +21,18 @@ public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
     private final UserMapper userMapper;
+
+    @Override
+    public List<User> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(userMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<User> findAll(Pageable pageable) {
+        return jpaRepository.findAll(pageable).map(userMapper::toDomain);
+    }
 
     @Override
     public Optional<User> findById(UUID id) {
@@ -35,6 +49,11 @@ public class UserRepositoryImpl implements UserRepository {
         return jpaRepository.findByRole(role).stream()
                 .map(userMapper::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<User> findByRole(Role role, Pageable pageable) {
+        return jpaRepository.findByRole(role, pageable).map(userMapper::toDomain);
     }
 
     @Override

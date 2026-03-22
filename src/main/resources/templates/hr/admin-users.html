@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+    th:replace="~{fragments/layout :: layout('Quản lý tài khoản ADMIN', ~{::section})}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý tài khoản ADMIN</title>
+</head>
+<body>
+<section>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="adminUsersPage()">
+        <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản lý tài khoản</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Quản trị vai trò và trạng thái tài khoản người dùng.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <label for="roleFilter" class="text-sm text-slate-600 dark:text-slate-300">Lọc vai trò</label>
+                <select id="roleFilter" x-model="roleFilter" @change="onFilterChange()"
+                        class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-sm">
+                    <option value="">Tất cả</option>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="HR">HR</option>
+                    <option value="CANDIDATE">Ứng viên</option>
+                </select>
+                <button @click="fetchUsers()"
+                        class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                    Làm mới
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+            <div x-show="loading" class="px-6 py-4 text-sm text-slate-500">Đang tải danh sách người dùng...</div>
+
+            <div class="overflow-x-auto" x-show="!loading">
+                <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                    <thead class="bg-slate-50 dark:bg-slate-800/60">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Họ tên</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Vai trò</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Trạng thái</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tạo lúc</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Hành động</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <template x-for="userItem in users" :key="userItem.id">
+                        <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
+                            <td class="px-4 py-3">
+                                <p class="font-medium text-slate-800 dark:text-slate-100" x-text="userItem.fullName || 'Không có'"></p>
+                                <p class="text-xs text-slate-500" x-text="userItem.department || '-' "></p>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300" x-text="userItem.email"></td>
+                            <td class="px-4 py-3">
+                                <template x-if="isSelf(userItem)">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
+                                          x-text="displayRole(userItem.role)"></span>
+                                </template>
+                                <template x-if="!isSelf(userItem)">
+                                    <select :value="userItem.role" @change="updateRole(userItem, $event.target.value)"
+                                            class="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-700 dark:bg-slate-800">
+                                        <option value="ADMIN">Quản trị viên</option>
+                                        <option value="HR">Nhân sự</option>
+                                        <option value="CANDIDATE">Ứng viên</option>
+                                    </select>
+                                </template>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                                      :class="userItem.active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
+                                      x-text="userItem.active ? 'Đang hoạt động' : 'Đã khóa'"></span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400" x-text="formatDate(userItem.createdAt)"></td>
+                            <td class="px-4 py-3">
+                                <div class="flex justify-end gap-2">
+                                    <button @click="toggleLock(userItem)"
+                                            :disabled="isSelf(userItem)"
+                                            class="px-3 py-1.5 text-xs rounded-md border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800">
+                                        <span x-text="userItem.active ? 'Khóa' : 'Mở khóa'"></span>
+                                    </button>
+                                    <button @click="deleteUser(userItem)"
+                                            :disabled="isSelf(userItem)"
+                                            class="px-3 py-1.5 text-xs rounded-md bg-red-50 text-red-700 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-100">
+                                        Xóa
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div x-show="!loading &amp;&amp; users.length === 0" class="px-6 py-10 text-center text-slate-500">
+                Không tìm thấy tài khoản nào với bộ lọc hiện tại.
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <p class="text-sm text-slate-500">
+                    Tổng: <span class="font-semibold" x-text="totalElements"></span> tài khoản
+                </p>
+                <div class="flex items-center gap-2">
+                    <button @click="prevPage()" :disabled="page <= 0"
+                            class="px-3 py-1.5 text-sm rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800">
+                        Trước
+                    </button>
+                    <span class="text-sm text-slate-600 dark:text-slate-300">
+                        Trang <span x-text="page + 1"></span>/<span x-text="Math.max(totalPages, 1)"></span>
+                    </span>
+                    <button @click="nextPage()" :disabled="page + 1 >= totalPages"
+                            class="px-3 py-1.5 text-sm rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800">
+                        Sau
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function adminUsersPage() {
+            return {
+                users: [],
+                roleFilter: '',
+                page: 0,
+                size: 10,
+                totalPages: 0,
+                totalElements: 0,
+                loading: false,
+                currentUserId: null,
+
+                async init() {
+                    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+
+                    if (!currentUser || currentUser.role !== 'ADMIN') {
+                        window.location.href = '/login?expired=true&reason=forbidden';
+                        return;
+                    }
+
+                    this.currentUserId = currentUser?.id || null;
+                    await this.fetchUsers();
+                },
+
+                async fetchUsers() {
+                    this.loading = true;
+                    try {
+                        const params = new URLSearchParams({
+                            page: this.page,
+                            size: this.size,
+                            sort: 'createdAt,desc'
+                        });
+                        if (this.roleFilter) {
+                            params.append('role', this.roleFilter);
+                        }
+
+                        const res = await api.get(`/api/admin/users?${params.toString()}`);
+                        if (!res.success) {
+                            api.showError('Lỗi', res.message || 'Không thể tải danh sách người dùng');
+                            return;
+                        }
+
+                        const payload = res.data || {};
+                        this.users = payload.content || [];
+                        this.totalPages = payload.totalPages || 0;
+                        this.totalElements = payload.totalElements || 0;
+                        this.page = payload.number || 0;
+                    } catch (e) {
+                        api.showError('Lỗi', e?.data?.message || 'Không thể tải danh sách người dùng');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                onFilterChange() {
+                    this.page = 0;
+                    this.fetchUsers();
+                },
+
+                prevPage() {
+                    if (this.page <= 0) return;
+                    this.page -= 1;
+                    this.fetchUsers();
+                },
+
+                nextPage() {
+                    if (this.page + 1 >= this.totalPages) return;
+                    this.page += 1;
+                    this.fetchUsers();
+                },
+
+                isSelf(userItem) {
+                    return !!this.currentUserId && userItem.id === this.currentUserId;
+                },
+
+                displayRole(role) {
+                    if (role === 'ADMIN') return 'Quản trị viên';
+                    if (role === 'HR') return 'Nhân sự';
+                    if (role === 'CANDIDATE') return 'Ứng viên';
+                    return role;
+                },
+
+                async updateRole(userItem, role) {
+                    if (userItem.role === role) return;
+                    try {
+                        const res = await api.patch(`/api/admin/users/${userItem.id}/role`, { role });
+                        if (res.success) {
+                            userItem.role = role;
+                            Swal.fire({ icon: 'success', title: 'Đã cập nhật vai trò', timer: 1200, showConfirmButton: false });
+                        }
+                    } catch (e) {
+                        api.showError('Cập nhật vai trò thất bại', e?.data?.message || 'Vui lòng thử lại');
+                        await this.fetchUsers();
+                    }
+                },
+
+                async toggleLock(userItem) {
+                    const endpoint = userItem.active
+                        ? `/api/admin/users/${userItem.id}/lock`
+                        : `/api/admin/users/${userItem.id}/unlock`;
+                    try {
+                        const res = await api.patch(endpoint, {});
+                        if (res.success) {
+                            userItem.active = !userItem.active;
+                            Swal.fire({ icon: 'success', title: 'Đã cập nhật trạng thái', timer: 1200, showConfirmButton: false });
+                        }
+                    } catch (e) {
+                        api.showError('Cập nhật trạng thái thất bại', e?.data?.message || 'Vui lòng thử lại');
+                    }
+                },
+
+                async deleteUser(userItem) {
+                    const confirmed = await Swal.fire({
+                        title: 'Xác nhận xóa tài khoản?',
+                        text: `Tài khoản ${userItem.email} sẽ bị xóa vĩnh viễn.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Xóa',
+                        cancelButtonText: 'Hủy'
+                    });
+
+                    if (!confirmed.isConfirmed) return;
+
+                    try {
+                        await api.delete(`/api/admin/users/${userItem.id}`);
+
+                        Swal.fire({ icon: 'success', title: 'Đã xóa tài khoản', timer: 1200, showConfirmButton: false });
+                        await this.fetchUsers();
+                    } catch (e) {
+                        api.showError('Xóa thất bại', e?.data?.message || 'Vui lòng thử lại');
+                    }
+                },
+
+                formatDate(value) {
+                    if (!value) return '-';
+                    const d = new Date(value);
+                    if (Number.isNaN(d.getTime())) return '-';
+                    return d.toLocaleString('vi-VN');
+                }
+            }
+        }
+    </script>
+</section>
+</body>
+</html>

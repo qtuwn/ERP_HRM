@@ -102,6 +102,10 @@ const api = {
     });
   },
 
+  async delete(endpoint) {
+    return this.fetchWithToken(endpoint, { method: "DELETE" });
+  },
+
   showError(title, message) {
     if (typeof Swal !== "undefined") {
       Swal.fire({ icon: "error", title: title, text: message });

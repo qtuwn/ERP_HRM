@@ -37,6 +37,7 @@ public class SecurityConfig {
                                 "/", "/login", "/register",
                                 "/jobs", "/jobs/**",
                                 "/dashboard", "/jobs/*/kanban",
+                                "/admin/users",
                                 "/candidate/applications", "/profile",
                                 "/css/**", "/js/**", "/images/**", "/error")
                         .permitAll()

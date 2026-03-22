@@ -53,4 +53,9 @@ public class ViewController {
     public String userProfile() {
         return "candidate/profile";
     }
+
+    @GetMapping("/admin/users")
+    public String adminUsers() {
+        return "hr/admin-users";
+    }
 }
