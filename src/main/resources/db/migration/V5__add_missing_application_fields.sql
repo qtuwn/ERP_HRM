@@ -1,0 +1,5 @@
+ALTER TABLE applications
+ADD COLUMN ai_status VARCHAR(50) DEFAULT 'PENDING',
+ADD COLUMN form_data TEXT,
+ADD COLUMN cv_text TEXT,
+ADD COLUMN hr_note TEXT;

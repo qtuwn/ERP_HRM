@@ -4,10 +4,12 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY src ./src
 
-RUN mvn -DskipTests package
+RUN mvn -Dmaven.test.skip=true package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+
+RUN apk add --no-cache wget
 
 COPY --from=build /workspace/target/*.jar app.jar
 
