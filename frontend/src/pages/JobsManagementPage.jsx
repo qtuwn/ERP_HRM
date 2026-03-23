@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { getUser } from '../lib/storage.js'
-import { Eye, Pencil, Plus, RefreshCw, Trash2, CircleCheck, Ban } from 'lucide-react'
+import { Eye, Pencil, Plus, RefreshCw, Trash2, CircleCheck, Ban, Search } from 'lucide-react'
 import { QuillEditor } from '../components/QuillEditor.jsx'
 
 function statusLabel(status) {
@@ -70,6 +70,28 @@ export function JobsManagementPage() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(() => emptyForm(userDepartment))
   const [saving, setSaving] = useState(false)
+
+  const [searchTitle, setSearchTitle] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+
+  const filteredJobs = useMemo(() => {
+    const q = searchTitle.trim().toLowerCase()
+    return jobs.filter((job) => {
+      if (statusFilter !== 'ALL' && job.status !== statusFilter) return false
+      if (!q) return true
+      return (job.title || '').toLowerCase().includes(q)
+    })
+  }, [jobs, searchTitle, statusFilter])
+
+  const statusFilters = useMemo(
+    () => [
+      { id: 'ALL', label: 'Tất cả' },
+      { id: 'DRAFT', label: 'Bản nháp' },
+      { id: 'OPEN', label: 'Đang tuyển' },
+      { id: 'CLOSED', label: 'Đã đóng' },
+    ],
+    [],
+  )
 
   async function fetchJobs(nextPage = page) {
     setLoading(true)
@@ -236,6 +258,36 @@ export function JobsManagementPage() {
           </div>
         ) : (
           <>
+            <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative min-w-[200px] flex-1 max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={searchTitle}
+                  onChange={(e) => setSearchTitle(e.target.value)}
+                  placeholder="Tìm theo tiêu đề tin..."
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-[#2563eb]/0 transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/25 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  aria-label="Tìm tin theo tiêu đề"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {statusFilters.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setStatusFilter(id)}
+                    className={[
+                      'rounded-full border px-3 py-1 text-xs font-medium transition',
+                      statusFilter === id
+                        ? 'border-[#2563eb] bg-[#2563eb] text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="w-full overflow-x-auto">
               <table className="w-full min-w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
                 <thead className="bg-slate-50 dark:bg-slate-800/80">
@@ -261,7 +313,7 @@ export function JobsManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {jobs.map((job) => (
+                  {filteredJobs.map((job) => (
                     <tr key={job.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
                       <td className="px-4 py-4">
                         <p className="font-medium text-slate-900 dark:text-white">{job.title || 'Không có tiêu đề'}</p>
@@ -340,10 +392,26 @@ export function JobsManagementPage() {
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-4 dark:border-slate-700">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Tổng: <span className="font-semibold text-slate-800 dark:text-slate-200">{totalElements}</span> tin
-              </p>
+            {!loading && jobs.length > 0 && filteredJobs.length === 0 ? (
+              <div className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                Không có tin nào khớp bộ lọc. Thử đổi từ khóa hoặc trạng thái.
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                <p>
+                  Tổng hệ thống:{' '}
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{totalElements}</span> tin
+                </p>
+                {jobs.length > 0 ? (
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-500">
+                    Trang này: hiển thị{' '}
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{filteredJobs.length}</span> /{' '}
+                    {jobs.length} tin (sau lọc cục bộ)
+                  </p>
+                ) : null}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
