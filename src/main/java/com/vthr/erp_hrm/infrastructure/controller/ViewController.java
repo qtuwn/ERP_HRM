@@ -44,6 +44,11 @@ public class ViewController {
         return "hr/kanban-board";
     }
 
+    @GetMapping("/jobs/management")
+    public String jobsManagement() {
+        return "hr/jobs-management";
+    }
+
     @GetMapping("/candidate/applications")
     public String candidateApplications() {
         return "candidate/applications";
@@ -52,5 +57,10 @@ public class ViewController {
     @GetMapping("/profile")
     public String userProfile() {
         return "candidate/profile";
+    }
+
+    @GetMapping("/admin/users")
+    public String adminUsers() {
+        return "hr/admin-users";
     }
 }

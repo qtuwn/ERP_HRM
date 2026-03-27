@@ -47,11 +47,11 @@ public class ChatController {
         UUID senderId = UUID.fromString(authentication.getName());
         Role senderRole = authentication.getAuthorities().stream()
                 .findFirst()
-                .map(auth -> Role.valueOf(auth.getAuthority().replace("ROLE_", "")))
+                .map(auth -> Role.fromString(auth.getAuthority()))
                 .orElse(Role.CANDIDATE);
 
         Message saved = chatService.sendMessage(applicationId, senderId, senderRole, request.getContent());
-        
+
         return ResponseEntity.ok(ApiResponse.success(mapToResponse(saved), "Message sent"));
     }
 
@@ -76,11 +76,11 @@ public class ChatController {
         UUID senderId = UUID.fromString(authentication.getName());
         Role senderRole = authentication.getAuthorities().stream()
                 .findFirst()
-                .map(auth -> Role.valueOf(auth.getAuthority().replace("ROLE_", "")))
+                .map(auth -> Role.fromString(auth.getAuthority()))
                 .orElse(Role.CANDIDATE);
 
         chatService.indicateTyping(applicationId, senderId, senderRole);
-        
+
         return ResponseEntity.ok(ApiResponse.success(null, "Typing indicator sent"));
     }
 }

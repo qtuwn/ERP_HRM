@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs", "/api/jobs/**")
                         .permitAll()
@@ -37,6 +38,7 @@ public class SecurityConfig {
                                 "/", "/login", "/register",
                                 "/jobs", "/jobs/**",
                                 "/dashboard", "/jobs/*/kanban",
+                                "/admin/users",
                                 "/candidate/applications", "/profile",
                                 "/css/**", "/js/**", "/images/**", "/error")
                         .permitAll()

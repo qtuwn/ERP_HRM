@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>OTP xac thuc email</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+<div style="max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+    <h2 style="margin-top: 0; color: #1f2937;">OTP xac thuc tai khoan</h2>
+    <p>Xin chao <strong th:text="${fullName}">ban</strong>,</p>
+    <p>Ma OTP de xac thuc email cua ban la:</p>
+
+    <div style="font-size: 28px; letter-spacing: 6px; font-weight: 700; color: #4f46e5; margin: 16px 0;" th:text="${otp}">123456</div>
+
+    <p>OTP co hieu luc trong <strong th:text="${minutes}">10</strong> phut.</p>
+    <p>Neu ban khong tao tai khoan, vui long bo qua email nay.</p>
+</div>
+</body>
+</html>

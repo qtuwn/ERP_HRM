@@ -7,8 +7,23 @@ import java.util.UUID;
 
 public interface AuthService {
     AuthTokens login(String email, String password);
+
     AuthTokens refreshToken(String refreshTokenStr);
+
     void logout(String refreshTokenStr);
-    User register(String email, String password, String fullName, String phone);
+
+    User register(String email, String password, String fullName, String phone, String accountType, String companyName,
+            String department);
+
+    void verifyEmail(String token);
+
+    void verifyEmailOtp(String email, String otp);
+
+    void resendVerification(String email);
+
+    void requestForgotPasswordOtp(String email);
+
+    void resetPasswordWithOtp(String email, String otp, String newPassword);
+
     void changePassword(UUID userId, String oldPassword, String newPassword);
 }
