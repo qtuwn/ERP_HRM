@@ -21,6 +21,8 @@ public interface UserService {
 
     Page<User> getUsersByRole(Role role, Pageable pageable);
 
+    long countUsersByRole(Role role);
+
     User updateUserRole(UUID userId, Role role);
 
     User setUserActive(UUID userId, boolean active);
@@ -28,6 +30,10 @@ public interface UserService {
     User createUser(User user);
 
     User updateUser(User user);
+
+    User updateProfile(UUID userId, String fullName, String phone);
+
+    User updateDepartment(UUID userId, String department);
 
     void deleteUser(UUID id);
 }

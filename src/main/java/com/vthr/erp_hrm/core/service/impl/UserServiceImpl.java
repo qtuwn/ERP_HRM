@@ -1,5 +1,6 @@
 package com.vthr.erp_hrm.core.service.impl;
 
+import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.repository.UserRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Service
@@ -51,6 +53,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public long countUsersByRole(Role role) {
+        return userRepository.countByRole(role);
+    }
+
+    @Override
     public User updateUserRole(UUID userId, Role role) {
         User existing = getUserById(userId);
         existing.setRole(role);
@@ -61,6 +68,11 @@ public class UserServiceImpl implements UserService {
     public User setUserActive(UUID userId, boolean active) {
         User existing = getUserById(userId);
         existing.setActive(active);
+        if (active) {
+            existing.setStatus(existing.isEmailVerified() ? AccountStatus.ACTIVE : AccountStatus.PENDING);
+        } else {
+            existing.setStatus(AccountStatus.SUSPENDED);
+        }
         return userRepository.save(existing);
     }
 
@@ -75,7 +87,32 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User updateProfile(UUID userId, String fullName, String phone) {
+        User existing = getUserById(userId);
+        if (fullName != null && !fullName.isBlank()) {
+            existing.setFullName(fullName.trim());
+        }
+        if (phone != null && !phone.isBlank()) {
+            existing.setPhone(phone.trim());
+        }
+        existing.setUpdatedAt(ZonedDateTime.now());
+        return userRepository.save(existing);
+    }
+
+    @Override
+    public User updateDepartment(UUID userId, String department) {
+        User existing = getUserById(userId);
+        existing.setDepartment(department != null ? department.trim() : null);
+        existing.setUpdatedAt(ZonedDateTime.now());
+        return userRepository.save(existing);
+    }
+
+    @Override
     public void deleteUser(UUID id) {
-        userRepository.deleteById(id);
+        User existing = getUserById(id);
+        existing.setStatus(AccountStatus.DELETED);
+        existing.setActive(false);
+        existing.setDeletedAt(ZonedDateTime.now());
+        userRepository.save(existing);
     }
 }

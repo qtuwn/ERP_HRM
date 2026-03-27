@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-    th:replace="~{fragments/layout :: layout('Quản lý tài khoản ADMIN', ~{::section})}">
+    th:replace="~{fragments/layout :: layout('Quản lý tài khoản', ~{::section})}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý tài khoản ADMIN</title>
+    <title>Quản lý tài khoản</title>
 </head>
 <body>
 <section>
@@ -48,9 +48,16 @@
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     <template x-for="userItem in users" :key="userItem.id">
                         <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 group">
                                 <p class="font-medium text-slate-800 dark:text-slate-100" x-text="userItem.fullName || 'Không có'"></p>
-                                <p class="text-xs text-slate-500" x-text="userItem.department || '-' "></p>
+                                <div class="flex items-center gap-1">
+                                    <p class="text-xs text-slate-500" x-text="userItem.department || '-' "></p>
+                                    <button x-show="userItem.role === 'HR'" @click="editDepartment(userItem)" class="text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition" title="Chỉnh sửa phòng ban">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300" x-text="userItem.email"></td>
                             <td class="px-4 py-3">
@@ -195,6 +202,7 @@
 
                 displayRole(role) {
                     if (role === 'ADMIN') return 'Quản trị viên';
+                    if (role === 'SUPER_ADMIN') return 'Quản trị viên';
                     if (role === 'HR') return 'Nhân sự';
                     if (role === 'CANDIDATE') return 'Ứng viên';
                     return role;
@@ -211,6 +219,33 @@
                     } catch (e) {
                         api.showError('Cập nhật vai trò thất bại', e?.data?.message || 'Vui lòng thử lại');
                         await this.fetchUsers();
+                    }
+                },
+
+                async editDepartment(userItem) {
+                    const { value: newDepartment } = await Swal.fire({
+                        title: 'Chỉnh sửa phòng ban',
+                        input: 'text',
+                        inputLabel: 'Tên phòng ban',
+                        inputValue: userItem.department || '',
+                        showCancelButton: true,
+                        inputValidator: (value) => {
+                            if (value && value.length > 255) {
+                                return 'Tên phòng ban quá dài!';
+                            }
+                        }
+                    });
+
+                    if (newDepartment !== undefined && newDepartment !== userItem.department) {
+                        try {
+                            const res = await api.patch(`/api/admin/users/${userItem.id}/department`, { department: newDepartment });
+                            if (res.success) {
+                                userItem.department = newDepartment;
+                                Swal.fire({ icon: 'success', title: 'Đã cập nhật phòng ban', timer: 1200, showConfirmButton: false });
+                            }
+                        } catch (e) {
+                            api.showError('Cập nhật thất bại', e?.data?.message || 'Vui lòng thử lại');
+                        }
                     }
                 },
 

@@ -9,12 +9,13 @@ import org.springframework.stereotype.Component;
 public class MessageMapper {
 
     public Message toDomain(MessageEntity entity) {
-        if (entity == null) return null;
+        if (entity == null)
+            return null;
         return Message.builder()
                 .id(entity.getId())
                 .applicationId(entity.getApplicationId())
                 .senderId(entity.getSenderId())
-                .senderRole(Role.valueOf(entity.getSenderRole()))
+                .senderRole(Role.fromString(entity.getSenderRole()))
                 .content(entity.getContent())
                 .readAt(entity.getReadAt())
                 .createdAt(entity.getCreatedAt())
@@ -22,7 +23,8 @@ public class MessageMapper {
     }
 
     public MessageEntity toEntity(Message domain) {
-        if (domain == null) return null;
+        if (domain == null)
+            return null;
         return MessageEntity.builder()
                 .id(domain.getId())
                 .applicationId(domain.getApplicationId())

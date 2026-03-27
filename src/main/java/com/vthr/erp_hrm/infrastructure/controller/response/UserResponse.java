@@ -1,5 +1,6 @@
 package com.vthr.erp_hrm.infrastructure.controller.response;
 
+import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
 import lombok.Builder;
@@ -14,21 +15,26 @@ public class UserResponse {
     private UUID id;
     private String email;
     private Role role;
+    private AccountStatus status;
     private boolean isActive;
     private String fullName;
+    private UUID companyId;
     private String department;
     private String phone;
     private boolean emailVerified;
     private ZonedDateTime createdAt;
-    
+
     public static UserResponse fromDomain(User user) {
-        if (user == null) return null;
+        if (user == null)
+            return null;
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .status(user.getStatus())
                 .isActive(user.isActive())
                 .fullName(user.getFullName())
+                .companyId(user.getCompanyId())
                 .department(user.getDepartment())
                 .phone(user.getPhone())
                 .emailVerified(user.isEmailVerified())

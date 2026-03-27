@@ -1,5 +1,6 @@
 package com.vthr.erp_hrm.infrastructure.persistence.repository;
 
+import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.repository.UserRepository;
@@ -24,36 +25,43 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public List<User> findAll() {
-        return jpaRepository.findAll().stream()
+        return jpaRepository.findByStatusNot(AccountStatus.DELETED).stream()
                 .map(userMapper::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
     public Page<User> findAll(Pageable pageable) {
-        return jpaRepository.findAll(pageable).map(userMapper::toDomain);
+        return jpaRepository.findByStatusNot(AccountStatus.DELETED, pageable).map(userMapper::toDomain);
     }
 
     @Override
     public Optional<User> findById(UUID id) {
-        return jpaRepository.findById(id).map(userMapper::toDomain);
+        return jpaRepository.findById(id)
+                .filter(entity -> entity.getStatus() != AccountStatus.DELETED)
+                .map(userMapper::toDomain);
     }
 
     @Override
     public Optional<User> findByEmail(String email) {
-        return jpaRepository.findByEmail(email).map(userMapper::toDomain);
+        return jpaRepository.findByEmailAndStatusNot(email, AccountStatus.DELETED).map(userMapper::toDomain);
     }
 
     @Override
     public List<User> findByRole(Role role) {
-        return jpaRepository.findByRole(role).stream()
+        return jpaRepository.findByRoleAndStatusNot(role, AccountStatus.DELETED).stream()
                 .map(userMapper::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
     public Page<User> findByRole(Role role, Pageable pageable) {
-        return jpaRepository.findByRole(role, pageable).map(userMapper::toDomain);
+        return jpaRepository.findByRoleAndStatusNot(role, AccountStatus.DELETED, pageable).map(userMapper::toDomain);
+    }
+
+    @Override
+    public long countByRole(Role role) {
+        return jpaRepository.countByRoleAndStatusNot(role, AccountStatus.DELETED);
     }
 
     @Override

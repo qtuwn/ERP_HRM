@@ -1,6 +1,7 @@
 package com.vthr.erp_hrm.infrastructure.persistence.entity;
 
 import com.vthr.erp_hrm.core.model.Role;
+import com.vthr.erp_hrm.core.model.AccountStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -42,6 +43,11 @@ public class UserEntity {
     @Column(nullable = false, length = 50)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    @Builder.Default
+    private AccountStatus status = AccountStatus.ACTIVE;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private boolean isActive = true;
@@ -50,16 +56,26 @@ public class UserEntity {
     @Builder.Default
     private boolean mustChangePassword = false;
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name")
     private String fullName;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    @Column(name = "department")
     private String department;
-    
+
     private String phone;
 
     @Column(name = "email_verified", nullable = false)
     @Builder.Default
     private boolean emailVerified = false;
+
+    @Column(name = "verified_at")
+    private ZonedDateTime verifiedAt;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

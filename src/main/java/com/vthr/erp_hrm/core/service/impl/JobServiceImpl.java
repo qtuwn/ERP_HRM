@@ -29,6 +29,11 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    public Page<Job> getJobsByDepartment(String department, Pageable pageable) {
+        return jobRepository.findByDepartment(department, pageable);
+    }
+
+    @Override
     public Job getJobById(UUID id) {
         return jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
     }
@@ -52,13 +57,13 @@ public class JobServiceImpl implements JobService {
     @Override
     public Job updateJob(UUID id, Job jobDetails) {
         Job existing = getJobById(id);
-        
+
         existing.setTitle(jobDetails.getTitle());
         existing.setDescription(jobDetails.getDescription());
         existing.setDepartment(jobDetails.getDepartment());
         existing.setRequiredSkills(jobDetails.getRequiredSkills());
         existing.setExpiresAt(jobDetails.getExpiresAt());
-        
+
         return jobRepository.save(existing);
     }
 

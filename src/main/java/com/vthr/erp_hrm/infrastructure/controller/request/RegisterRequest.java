@@ -17,4 +17,11 @@ public class RegisterRequest {
     private String fullName;
 
     private String phone;
+
+    // CANDIDATE | HR
+    private String accountType;
+
+    private String companyName;
+
+    private String department;
 }

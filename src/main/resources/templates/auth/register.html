@@ -4,10 +4,22 @@
     
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Đăng ký tài khoản</h1>
-        <p class="text-slate-500 mt-2">Dành cho ứng viên tìm việc</p>
+        <p class="text-slate-500 mt-2">Hỗ trợ đăng ký Ứng viên hoặc HR/Doanh nghiệp</p>
     </div>
 
     <form @submit.prevent="submit" class="space-y-6">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">Loại tài khoản</label>
+            <div class="grid grid-cols-2 gap-2 bg-slate-100 rounded-lg p-1">
+                <button type="button" @click="form.accountType = 'CANDIDATE'"
+                    :class="form.accountType === 'CANDIDATE' ? 'bg-white shadow text-primary' : 'text-slate-600'"
+                    class="py-2 rounded-md text-sm font-medium transition">Ứng viên</button>
+                <button type="button" @click="form.accountType = 'HR'"
+                    :class="form.accountType === 'HR' ? 'bg-white shadow text-primary' : 'text-slate-600'"
+                    class="py-2 rounded-md text-sm font-medium transition">HR / Công ty</button>
+            </div>
+        </div>
+
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
             <input x-model="form.fullName" type="text" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
@@ -29,6 +41,19 @@
             </div>
         </div>
 
+        <template x-if="form.accountType === 'HR'">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Tên công ty</label>
+                    <input x-model="form.companyName" type="text" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Phòng ban</label>
+                    <input x-model="form.department" type="text" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                </div>
+            </div>
+        </template>
+
         <button type="submit" :disabled="loading" class="w-full bg-primary text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex justify-center items-center">
             <span x-show="!loading">Đăng ký</span>
             <svg x-show="loading" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="display: none;"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -42,22 +67,78 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('registerForm', () => ({
-                form: { email: '', password: '', fullName: '', phone: '' },
+                form: {
+                    email: '',
+                    password: '',
+                    fullName: '',
+                    phone: '',
+                    accountType: 'CANDIDATE',
+                    companyName: '',
+                    department: ''
+                },
                 loading: false,
                 async submit() {
                     this.loading = true;
                     try {
-                        const res = await api.fetchWithToken('/auth/register', {
+                        const payload = {
+                            ...this.form,
+                            companyName: this.form.accountType === 'HR' ? this.form.companyName : null,
+                            department: this.form.accountType === 'HR' ? this.form.department : null
+                        };
+
+                        await api.fetchWithToken('/auth/register', {
                             method: 'POST',
-                            body: JSON.stringify(this.form)
+                            body: JSON.stringify(payload)
                         });
-                        Swal.fire({ icon: 'success', title: 'Thành công', text: 'Đăng ký thành công! Vui lòng đăng nhập.'}).then(() => {
-                            window.location.href = '/login';
+
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Đăng ký thành công',
+                            text: 'OTP xác thực đã gửi về email của bạn.'
                         });
+
+                        await this.verifyOtpFlow();
                     } catch (err) {
                         Swal.fire({ icon: 'error', title: 'Lỗi', text: err.data?.message || 'Lỗi đăng ký' });
                     } finally {
                         this.loading = false;
+                    }
+                },
+                async verifyOtpFlow() {
+                    while (true) {
+                        const result = await Swal.fire({
+                            title: 'Nhập OTP xác thực email',
+                            input: 'text',
+                            inputPlaceholder: 'Nhập mã OTP gồm 6 số',
+                            showCancelButton: true,
+                            confirmButtonText: 'Xác thực',
+                            cancelButtonText: 'Gửi lại OTP'
+                        });
+
+                        if (result.dismiss === Swal.DismissReason.cancel) {
+                            await api.fetchWithToken('/auth/resend-verification', {
+                                method: 'POST',
+                                body: JSON.stringify({ email: this.form.email })
+                            });
+                            await Swal.fire({ icon: 'info', title: 'Đã gửi lại OTP', timer: 1200, showConfirmButton: false });
+                            continue;
+                        }
+
+                        if (!result.value) {
+                            return;
+                        }
+
+                        try {
+                            await api.fetchWithToken('/auth/verify-email-otp', {
+                                method: 'POST',
+                                body: JSON.stringify({ email: this.form.email, otp: result.value })
+                            });
+                            await Swal.fire({ icon: 'success', title: 'Xác thực thành công', text: 'Bạn có thể đăng nhập ngay.' });
+                            window.location.href = '/login';
+                            return;
+                        } catch (err) {
+                            await Swal.fire({ icon: 'error', title: 'OTP không hợp lệ', text: err.data?.message || 'Vui lòng thử lại.' });
+                        }
                     }
                 }
             }));

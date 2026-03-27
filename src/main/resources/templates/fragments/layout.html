@@ -56,6 +56,9 @@
                     <template x-if="user &amp;&amp; ['ADMIN', 'HR'].includes(user.role)">
                         <a href="/dashboard" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Bảng điều khiển quản trị</a>
                     </template>
+                    <template x-if="user &amp;&amp; ['ADMIN', 'HR'].includes(user.role)">
+                        <a href="/jobs/management" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Quản lý tin tuyển</a>
+                    </template>
                     <template x-if="user &amp;&amp; user.role === 'ADMIN'">
                         <a href="/admin/users" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Quản lý tài khoản</a>
                     </template>

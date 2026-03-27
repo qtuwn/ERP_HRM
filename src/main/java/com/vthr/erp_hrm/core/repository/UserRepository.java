@@ -22,6 +22,8 @@ public interface UserRepository {
 
     Page<User> findByRole(Role role, Pageable pageable);
 
+    long countByRole(Role role);
+
     User save(User user);
 
     void deleteById(UUID id);

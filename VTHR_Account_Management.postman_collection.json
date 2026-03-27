@@ -1,0 +1,131 @@
+{
+  "info": {
+    "name": "VTHR Account Management API",
+    "description": "API tests for User Profile, HR Management, and Audit Logs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User Profile",
+      "item": [
+        {
+          "name": "Get Current Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"fullName\": \"Updated Name\", \"phone\": \"0987654321\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Company HR Management",
+      "item": [
+        {
+          "name": "Add HR Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{hr_manager_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userId\": \"<USER_UUID>\", \"role\": \"HR\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/companies/{{company_id}}/hr-members",
+              "host": ["{{base_url}}"],
+              "path": ["api", "companies", "{{company_id}}", "hr-members"]
+            }
+          }
+        },
+        {
+          "name": "Update HR Member Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{hr_manager_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"role\": \"HR_MANAGER\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/companies/{{company_id}}/hr-members/{{member_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "companies", "{{company_id}}", "hr-members", "{{member_id}}", "role"]
+            }
+          }
+        },
+        {
+          "name": "Remove HR Member",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{hr_manager_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies/{{company_id}}/hr-members/{{member_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "companies", "{{company_id}}", "hr-members", "{{member_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Audit Logs",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/audit-logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "audit-logs"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "access_token", "value": "" },
+    { "key": "hr_manager_token", "value": "" },
+    { "key": "admin_token", "value": "" },
+    { "key": "company_id", "value": "" },
+    { "key": "member_id", "value": "" }
+  ]
+}

@@ -19,7 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:h2:mem:test",
         "spring.datasource.driverClassName=org.h2.Driver",
         "spring.datasource.username=sa",
-        "spring.datasource.password="
+        "spring.datasource.password=",
+        "spring.flyway.enabled=false"
 })
 public class KanbanUiTest {
 

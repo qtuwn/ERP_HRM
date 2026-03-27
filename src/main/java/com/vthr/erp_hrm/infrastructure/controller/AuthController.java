@@ -4,10 +4,14 @@ import com.vthr.erp_hrm.core.model.AuthTokens;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.service.AuthService;
 import com.vthr.erp_hrm.infrastructure.controller.request.ChangePasswordRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.ForgotPasswordRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.LoginRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.LogoutRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.RefreshTokenRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.RegisterRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.ResetPasswordWithOtpRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.ResendVerificationRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.VerifyEmailOtpRequest;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.LoginResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.UserResponse;
@@ -28,7 +32,14 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        User user = authService.register(request.getEmail(), request.getPassword(), request.getFullName(), request.getPhone());
+        User user = authService.register(
+                request.getEmail(),
+                request.getPassword(),
+                request.getFullName(),
+                request.getPhone(),
+                request.getAccountType(),
+                request.getCompanyName(),
+                request.getDepartment());
         return ResponseEntity.ok(ApiResponse.success(UserResponse.fromDomain(user), "Registered successfully"));
     }
 
@@ -61,7 +72,8 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request, Authentication authentication) {
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             throw new RuntimeException("Unauthorized");
         }
@@ -72,6 +84,32 @@ public class AuthController {
 
     @GetMapping("/verify-email")
     public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam String token) {
-        return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully (Demo)"));
+        authService.verifyEmail(token);
+        return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
+    }
+
+    @PostMapping("/verify-email-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyEmailOtp(@Valid @RequestBody VerifyEmailOtpRequest request) {
+        authService.verifyEmailOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(null, "Verification email sent"));
+    }
+
+    @PostMapping("/forgot-password/request")
+    public ResponseEntity<ApiResponse<Void>> requestForgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestForgotPasswordOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP reset password da duoc gui"));
+    }
+
+    @PostMapping("/forgot-password/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmForgotPassword(
+            @Valid @RequestBody ResetPasswordWithOtpRequest request) {
+        authService.resetPasswordWithOtp(request.getEmail(), request.getOtp(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Reset password thanh cong"));
     }
 }

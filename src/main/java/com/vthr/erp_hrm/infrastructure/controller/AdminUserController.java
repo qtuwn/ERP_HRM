@@ -3,6 +3,8 @@ package com.vthr.erp_hrm.infrastructure.controller;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.UserService;
 import com.vthr.erp_hrm.infrastructure.controller.request.UpdateUserRoleRequest;
+import com.vthr.erp_hrm.core.model.AuditLog;
+import com.vthr.erp_hrm.core.service.AuditLogService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.UserResponse;
 import jakarta.validation.Valid;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,16 +33,24 @@ import java.util.UUID;
 public class AdminUserController {
 
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
-            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) String role,
             Pageable pageable) {
-        Page<UserResponse> users = (role == null
+        Role normalizedRole = role == null || role.isBlank() ? null : Role.fromString(role);
+        Page<UserResponse> users = (normalizedRole == null
                 ? userService.getAllUsers(pageable)
-                : userService.getUsersByRole(role, pageable))
+                : userService.getUsersByRole(normalizedRole, pageable))
                 .map(UserResponse::fromDomain);
         return ResponseEntity.ok(ApiResponse.success(users, "Fetched users successfully"));
+    }
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<ApiResponse<List<AuditLog>>> getAuditLogs() {
+        List<AuditLog> logs = auditLogService.getRecentLogs();
+        return ResponseEntity.ok(ApiResponse.success(logs, "Fetched recent audit logs"));
     }
 
     @GetMapping("/{id}")
@@ -54,7 +65,12 @@ public class AdminUserController {
             @Valid @RequestBody UpdateUserRoleRequest request,
             Principal principal) {
         preventSelfRoleChange(id, principal);
+        preventDemotingLastAdmin(id, request.getRole());
         UserResponse user = UserResponse.fromDomain(userService.updateUserRole(id, request.getRole()));
+        
+        UUID currentUserId = UUID.fromString(principal.getName());
+        auditLogService.logAction(currentUserId, "UPDATE_USER_ROLE", "User", id, "Changed role to " + request.getRole());
+        
         return ResponseEntity.ok(ApiResponse.success(user, "Updated user role successfully"));
     }
 
@@ -63,14 +79,39 @@ public class AdminUserController {
             @PathVariable UUID id,
             Principal principal) {
         preventSelfAction(id, principal, "You cannot lock your own account");
+        preventLockingLastAdmin(id);
         UserResponse user = UserResponse.fromDomain(userService.setUserActive(id, false));
+        
+        UUID currentUserId = UUID.fromString(principal.getName());
+        auditLogService.logAction(currentUserId, "LOCK_USER", "User", id, "Locked user account");
+        
         return ResponseEntity.ok(ApiResponse.success(user, "Locked user successfully"));
     }
 
     @PatchMapping("/{id}/unlock")
-    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(
+            @PathVariable UUID id,
+            Principal principal) {
         UserResponse user = UserResponse.fromDomain(userService.setUserActive(id, true));
+
+        UUID currentUserId = UUID.fromString(principal.getName());
+        auditLogService.logAction(currentUserId, "UNLOCK_USER", "User", id, "Unlocked user account");
+
         return ResponseEntity.ok(ApiResponse.success(user, "Unlocked user successfully"));
+    }
+
+    @PatchMapping("/{id}/department")
+    public ResponseEntity<ApiResponse<UserResponse>> updateDepartment(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.UpdateUserDepartmentRequest request,
+            Principal principal) {
+        
+        UserResponse user = UserResponse.fromDomain(userService.updateDepartment(id, request.getDepartment()));
+
+        UUID currentUserId = UUID.fromString(principal.getName());
+        auditLogService.logAction(currentUserId, "UPDATE_USER_DEPARTMENT", "User", id, "Updated user department to " + request.getDepartment());
+
+        return ResponseEntity.ok(ApiResponse.success(user, "Updated user department successfully"));
     }
 
     @DeleteMapping("/{id}")
@@ -78,8 +119,38 @@ public class AdminUserController {
             @PathVariable UUID id,
             Principal principal) {
         preventSelfAction(id, principal, "You cannot delete your own account");
+        preventDeletingLastAdmin(id);
         userService.deleteUser(id);
+
+        UUID currentUserId = UUID.fromString(principal.getName());
+        auditLogService.logAction(currentUserId, "DELETE_USER", "User", id, "Deleted user account");
+
         return ResponseEntity.ok(ApiResponse.success(null, "Deleted user successfully"));
+    }
+
+    private void preventDemotingLastAdmin(UUID targetUserId, Role newRole) {
+        if (newRole == Role.ADMIN) {
+            return;
+        }
+
+        UserResponse target = UserResponse.fromDomain(userService.getUserById(targetUserId));
+        if (target.getRole() == Role.ADMIN && userService.countUsersByRole(Role.ADMIN) <= 1) {
+            throw new RuntimeException("Cannot change role of the last ADMIN account");
+        }
+    }
+
+    private void preventLockingLastAdmin(UUID targetUserId) {
+        UserResponse target = UserResponse.fromDomain(userService.getUserById(targetUserId));
+        if (target.getRole() == Role.ADMIN && userService.countUsersByRole(Role.ADMIN) <= 1) {
+            throw new RuntimeException("Cannot lock the last ADMIN account");
+        }
+    }
+
+    private void preventDeletingLastAdmin(UUID targetUserId) {
+        UserResponse target = UserResponse.fromDomain(userService.getUserById(targetUserId));
+        if (target.getRole() == Role.ADMIN && userService.countUsersByRole(Role.ADMIN) <= 1) {
+            throw new RuntimeException("Cannot delete the last ADMIN account");
+        }
     }
 
     private void preventSelfRoleChange(UUID targetUserId, Principal principal) {

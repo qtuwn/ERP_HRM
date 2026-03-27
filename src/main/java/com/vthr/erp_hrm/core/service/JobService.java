@@ -8,12 +8,22 @@ import java.util.UUID;
 
 public interface JobService {
     Page<Job> getOpenJobs(Pageable pageable);
+
     Page<Job> getAllJobs(Pageable pageable);
+
+    Page<Job> getJobsByDepartment(String department, Pageable pageable);
+
     Job getJobById(UUID id);
+
     Job getPublicJobById(UUID id);
+
     Job createJob(Job job, UUID createdBy);
+
     Job updateJob(UUID id, Job jobDetails);
+
     Job publishJob(UUID id);
+
     Job closeJob(UUID id);
+
     void deleteJob(UUID id);
 }

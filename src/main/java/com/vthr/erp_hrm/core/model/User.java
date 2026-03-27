@@ -17,12 +17,16 @@ public class User {
     private String email;
     private String passwordHash;
     private Role role;
+    private AccountStatus status;
     private boolean isActive;
     private boolean mustChangePassword;
     private String fullName;
+    private UUID companyId;
     private String department;
     private String phone;
     private boolean emailVerified;
+    private ZonedDateTime verifiedAt;
+    private ZonedDateTime deletedAt;
     private ZonedDateTime createdAt;
     private ZonedDateTime updatedAt;
 }
