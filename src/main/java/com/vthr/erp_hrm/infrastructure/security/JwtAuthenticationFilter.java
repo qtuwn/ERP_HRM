@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Collections;
 
 @Component
@@ -47,11 +48,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 String userId = claims.getSubject();
                 String role = claims.get("role", String.class);
+                String companyId = claims.get("companyId", String.class);
 
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userId, null, Collections.singletonList(authority));
+                    if (companyId != null && !companyId.isBlank()) {
+                        var details = new HashMap<String, Object>();
+                        details.put("companyId", companyId);
+                        authToken.setDetails(details);
+                    }
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }

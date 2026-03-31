@@ -29,17 +29,17 @@ public class ViewController {
         return "public/job-list";
     }
 
-    @GetMapping("/jobs/{id}")
+    @GetMapping("/jobs/{id:[0-9a-fA-F\\-]{36}}")
     public String jobDetail(@PathVariable UUID id) {
         return "public/job-detail";
     }
 
-    @GetMapping("/jobs/{id}/apply")
+    @GetMapping("/jobs/{id:[0-9a-fA-F\\-]{36}}/apply")
     public String jobApply(@PathVariable UUID id) {
         return "candidate/apply";
     }
 
-    @GetMapping("/jobs/{id}/kanban")
+    @GetMapping("/jobs/{id:[0-9a-fA-F\\-]{36}}/kanban")
     public String kanbanBoard(@PathVariable UUID id) {
         return "hr/kanban-board";
     }
@@ -62,5 +62,10 @@ public class ViewController {
     @GetMapping("/admin/users")
     public String adminUsers() {
         return "hr/admin-users";
+    }
+
+    @GetMapping("/company/staff")
+    public String companyStaff() {
+        return "admin/company-staff";
     }
 }

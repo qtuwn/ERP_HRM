@@ -3,7 +3,7 @@ package com.vthr.erp_hrm.core.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum Role {
-    ADMIN, HR, HR_MANAGER, CANDIDATE;
+    ADMIN, COMPANY, HR, CANDIDATE;
 
     @JsonCreator
     public static Role fromString(String raw) {
@@ -18,6 +18,10 @@ public enum Role {
 
         if ("SUPER_ADMIN".equals(normalized) || "SUPERADMIN".equals(normalized)) {
             return ADMIN;
+        }
+
+        if ("HR_MANAGER".equals(normalized)) {
+            return COMPANY;
         }
 
         return Role.valueOf(normalized);

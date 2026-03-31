@@ -29,6 +29,7 @@ public class ApplicationController {
     private final com.vthr.erp_hrm.core.service.JobService jobService;
     private final FileStorageService fileStorageService;
     private final SignedUrlService signedUrlService;
+    private final com.vthr.erp_hrm.core.repository.AIEvaluationRepository aiEvaluationRepository;
 
     private ApplicationResponse mapAndSignUrl(Application app) {
         ApplicationResponse res = ApplicationResponse.fromDomain(app);
@@ -53,7 +54,7 @@ public class ApplicationController {
     }
 
     @GetMapping("/jobs/{jobId}/applications")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     public ResponseEntity<ApiResponse<Page<ApplicationResponse>>> getApplicationsForJob(
             @PathVariable UUID jobId, Pageable pageable) {
         Page<ApplicationResponse> apps = applicationService.getApplicationsByJobId(jobId, pageable)
@@ -62,7 +63,7 @@ public class ApplicationController {
     }
 
     @GetMapping("/jobs/{jobId}/applications/kanban")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     public ResponseEntity<ApiResponse<java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse>>> getKanbanApplications(
             @PathVariable UUID jobId) {
         java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> apps = applicationService
@@ -100,7 +101,7 @@ public class ApplicationController {
     }
 
     @PatchMapping("/applications/{id}/status")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     public ResponseEntity<ApiResponse<ApplicationResponse>> updateApplicationStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ApplicationUpdateRequest request,
@@ -112,12 +113,21 @@ public class ApplicationController {
     }
 
     @PostMapping("/applications/bulk-reject")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     public ResponseEntity<ApiResponse<Void>> bulkRejectApplications(
             @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.BulkRejectRequest request,
             Authentication authentication) {
         UUID hrId = UUID.fromString(authentication.getName());
         applicationService.bulkRejectApplications(request.getApplicationIds(), hrId);
         return ResponseEntity.ok(ApiResponse.success(null, "Bulk rejection processed successfully"));
+    }
+
+    @GetMapping("/applications/{id}/ai-evaluation")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    public ResponseEntity<ApiResponse<com.vthr.erp_hrm.core.model.AIEvaluation>> getAiEvaluation(
+            @PathVariable UUID id
+    ) {
+        var eval = aiEvaluationRepository.findByApplicationId(id).orElse(null);
+        return ResponseEntity.ok(ApiResponse.success(eval, "Fetched AI evaluation"));
     }
 }

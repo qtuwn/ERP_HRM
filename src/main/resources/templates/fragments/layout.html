@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title}">VTHR Solutions</title>
-    <!-- Tailwind CSS -->
+    <title th:text="${title}">VTHR Careers Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -16,129 +15,198 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
-    <!-- Alpine.js -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"/>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- WebSockets (SockJS + STOMP) -->
+    <!-- Kanban / realtime (trang HR dùng chung layout này) -->
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <!-- Custom API Wrapper -->
     <script src="/js/api.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 min-h-screen font-sans antialiased text-slate-800 dark:text-slate-100" x-data="globalState()">
-    
-    <!-- Navbar -->
-    <nav class="bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <!-- Logo -->
-                <div class="flex items-center">
-                    <a href="/" class="flex-shrink-0 flex items-center gap-2">
-                        <img src="/images/vthr-group-logo.png"
-                             alt="VTHR Group"
-                             class="w-8 h-8 rounded-lg object-cover"
-                                onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');" />
-                            <div class="w-8 h-8 rounded-lg bg-primary hidden items-center justify-center text-white font-bold text-xl">V</div>
-                        <span class="font-bold text-xl tracking-tight text-slate-900 dark:text-slate-100">VTHR</span>
+<body class="min-h-screen bg-slate-50 font-sans antialiased text-slate-800 dark:bg-slate-950 dark:text-slate-100" x-data="globalState()">
+
+    <!-- Navbar — chỉ điều hướng ứng viên / công khai; HR/Admin vào Dashboard qua nút riêng -->
+    <nav class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between gap-4">
+                <a href="/jobs" class="flex shrink-0 items-center gap-2">
+                    <img src="/images/vthr-group-logo.png" alt="VTHR"
+                         class="h-9 w-9 rounded-lg object-cover"
+                         onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"/>
+                    <div class="hidden h-9 w-9 items-center justify-center rounded-lg bg-[#2563eb] text-lg font-bold text-white">V</div>
+                    <span class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">VTHR</span>
+                </a>
+
+                <!-- Desktop -->
+                <div class="hidden items-center gap-2 md:flex">
+                    <a href="/jobs"
+                       class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">
+                        Việc làm
                     </a>
-                </div>
-                
-                <!-- Desktop Menu -->
-                <div class="hidden sm:flex sm:items-center sm:space-x-8">
-                    <button @click="toggleDarkMode()" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors" title="Chuyển chế độ sáng/tối">
-                        <span x-text="isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'"></span>
+
+                    <button type="button" @click="toggleDarkMode()"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                            title="Chế độ sáng/tối">
+                        <i data-lucide="moon" class="h-4 w-4 dark:hidden"></i>
+                        <i data-lucide="sun" class="hidden h-4 w-4 dark:block"></i>
                     </button>
-                    <a href="/jobs" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Việc làm</a>
-                    
-                    <template x-if="user &amp;&amp; ['ADMIN', 'HR'].includes(user.role)">
-                        <a href="/dashboard" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Bảng điều khiển quản trị</a>
-                    </template>
-                    <template x-if="user &amp;&amp; ['ADMIN', 'HR'].includes(user.role)">
-                        <a href="/jobs/management" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Quản lý tin tuyển</a>
-                    </template>
-                    <template x-if="user &amp;&amp; user.role === 'ADMIN'">
-                        <a href="/admin/users" class="text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium transition-colors">Quản lý tài khoản</a>
-                    </template>
-                    
+
                     <template x-if="!user">
-                        <div class="flex space-x-4 ml-4">
-                            <a href="/login" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 font-medium">Đăng nhập</a>
-                            <a href="/register" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">Đăng ký</a>
+                        <div class="ml-2 flex items-center gap-2">
+                            <a href="/login"
+                               class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500">
+                                Đăng nhập
+                            </a>
+                            <a href="/register"
+                               class="inline-flex items-center justify-center rounded-lg border-2 border-[#2563eb] bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] transition hover:bg-[#2563eb] hover:text-white dark:bg-slate-900 dark:hover:bg-[#2563eb]">
+                                Đăng ký
+                            </a>
                         </div>
                     </template>
-                    
+
                     <template x-if="user">
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="flex items-center gap-2 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white">
-                                <span class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-primary" x-text="user.fullName.charAt(0)"></span>
-                                <span class="font-medium" x-text="user.fullName"></span>
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg py-1 border border-slate-200 dark:border-slate-700 z-50" style="display: none;">
-                                <a href="/profile" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">Hồ sơ của tôi</a>
-                                <button @click="logout()" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Đăng xuất</button>
+                        <div class="ml-2 flex items-center gap-2">
+                            <template x-if="user &amp;&amp; ['HR', 'ADMIN', 'COMPANY'].includes(user.role)">
+                                <a href="/dashboard"
+                                   class="inline-flex items-center gap-1.5 rounded-lg border border-[#2563eb]/40 bg-[#2563eb]/5 px-3 py-2 text-sm font-semibold text-[#2563eb] transition hover:bg-[#2563eb]/10 dark:border-[#2563eb]/50 dark:text-blue-300 dark:hover:bg-[#2563eb]/20">
+                                    <i data-lucide="external-link" class="h-4 w-4"></i>
+                                    Vào bảng điều khiển
+                                </a>
+                            </template>
+
+                            <div class="relative" x-data="{ open: false }">
+                                <button type="button" @click="open = !open" @click.away="open = false"
+                                        class="flex max-w-[240px] items-center gap-2 rounded-lg border border-slate-200 py-1.5 pl-1.5 pr-2 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2563eb]/15 text-sm font-semibold text-[#2563eb] dark:bg-[#2563eb]/30 dark:text-white"
+                                          x-text="user.fullName ? user.fullName.charAt(0) : '?'"></span>
+                                    <span class="min-w-0 flex-1 text-left">
+                                        <span class="block truncate text-sm font-medium text-slate-900 dark:text-white" x-text="user.fullName"></span>
+                                    </span>
+                                    <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-slate-400"></i>
+                                </button>
+                                <div x-show="open"
+                                     x-transition
+                                     class="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                                     style="display: none;">
+                                    <a href="/candidate/applications"
+                                       class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                        <i data-lucide="file-text" class="h-4 w-4 text-slate-400"></i>
+                                        Ứng tuyển của tôi
+                                    </a>
+                                    <a href="/profile"
+                                       class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                        <i data-lucide="settings" class="h-4 w-4 text-slate-400"></i>
+                                        Cài đặt tài khoản
+                                    </a>
+                                    <div class="my-1 border-t border-slate-100 dark:border-slate-800"></div>
+                                    <button type="button" @click="logout()"
+                                            class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                                        Đăng xuất
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
                 </div>
+
+                <!-- Mobile -->
+                <div class="flex items-center gap-2 md:hidden">
+                    <button type="button" @click="toggleDarkMode()"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700">
+                        <i data-lucide="moon" class="h-4 w-4 dark:hidden"></i>
+                        <i data-lucide="sun" class="hidden h-4 w-4 dark:block"></i>
+                    </button>
+                    <button type="button" @click="mobileMenuOpen = !mobileMenuOpen" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700" aria-label="Menu">
+                        <i data-lucide="menu" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile panel -->
+            <div x-show="mobileMenuOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="border-t border-slate-200 py-4 dark:border-slate-800 md:hidden"
+                 style="display: none;">
+                <a href="/jobs" class="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">Việc làm</a>
+                <template x-if="!user">
+                    <div class="mt-3 flex flex-col gap-2">
+                        <a href="/login" class="rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold">Đăng nhập</a>
+                        <a href="/register" class="rounded-lg border-2 border-[#2563eb] px-4 py-2.5 text-center text-sm font-semibold text-[#2563eb]">Đăng ký</a>
+                    </div>
+                </template>
+                <template x-if="user">
+                    <div class="mt-3 space-y-2">
+                        <template x-if="user &amp;&amp; ['HR', 'ADMIN', 'COMPANY'].includes(user.role)">
+                            <a href="/dashboard" class="flex items-center gap-2 rounded-lg border border-[#2563eb]/40 bg-[#2563eb]/5 px-3 py-2 text-sm font-semibold text-[#2563eb]">
+                                <i data-lucide="external-link" class="h-4 w-4"></i>
+                                Vào bảng điều khiển
+                            </a>
+                        </template>
+                        <a href="/candidate/applications" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800">Ứng tuyển của tôi</a>
+                        <a href="/profile" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800">Cài đặt tài khoản</a>
+                        <button type="button" @click="logout()" class="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600">Đăng xuất</button>
+                    </div>
+                </template>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="w-full">
         <div th:replace="${content}"></div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-                <div>
-                    <div class="flex items-center gap-2 mb-3">
-                        <img src="/images/vthr-group-logo.png" alt="VTHR Group" class="w-9 h-9 rounded object-cover"
-                             onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');" />
-                        <div class="w-9 h-9 rounded bg-primary hidden items-center justify-center text-white font-bold">V</div>
-                        <span class="font-bold text-lg text-slate-900 dark:text-slate-100">VTHR Group</span>
+    <!-- Footer marketing — tách biệt Admin (không footer) -->
+    <footer class="mt-auto border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="lg:col-span-1">
+                    <div class="mb-4 flex items-center gap-2">
+                        <img src="/images/vthr-group-logo.png" alt="VTHR" class="h-10 w-10 rounded-lg object-cover"
+                             onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"/>
+                        <div class="hidden h-10 w-10 items-center justify-center rounded-lg bg-[#2563eb] font-bold text-white">V</div>
+                        <span class="text-lg font-bold text-slate-900 dark:text-white">VTHR Careers Hub</span>
                     </div>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-6">
-                        Nền tảng tuyển dụng công nghệ giúp kết nối ứng viên chất lượng với doanh nghiệp tăng trưởng nhanh.
+                    <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Về VTHR</h4>
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Nền tảng kết nối ứng viên và doanh nghiệp, tập trung trải nghiệm ứng tuyển minh bạch và công cụ tuyển dụng hiện đại.
                     </p>
                 </div>
 
                 <div>
-                    <h4 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">Liên kết nhanh</h4>
+                    <h4 class="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Mạng xã hội</h4>
                     <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                        <li><a href="/jobs" class="hover:text-[#1D6FEB]">Về chúng tôi</a></li>
-                        <li><a href="/jobs" class="hover:text-[#1D6FEB]">Liên hệ</a></li>
-                        <li><a href="/jobs" class="hover:text-[#1D6FEB]">Điều khoản bảo mật</a></li>
+                        <li><a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="transition hover:text-[#2563eb]">Facebook</a></li>
+                        <li><a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="transition hover:text-[#2563eb]">LinkedIn</a></li>
+                        <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" class="transition hover:text-[#2563eb]">GitHub</a></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">Mạng xã hội</h4>
+                    <h4 class="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Hỗ trợ</h4>
                     <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                        <li><a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#1D6FEB]">Facebook</a></li>
-                        <li><a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#1D6FEB]">LinkedIn</a></li>
-                        <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#1D6FEB]">GitHub</a></li>
+                        <li><a href="/jobs" class="transition hover:text-[#2563eb]">Trung tâm trợ giúp</a></li>
+                        <li><a href="mailto:support@vthr.local" class="transition hover:text-[#2563eb]">Liên hệ hỗ trợ</a></li>
+                        <li><a href="/jobs" class="transition hover:text-[#2563eb]">Câu hỏi thường gặp</a></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">Văn phòng</h4>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-6">
-                        Tầng 12, Tòa nhà Innovation Hub<br>
-                        Quận 1, TP. Hồ Chí Minh<br>
-                        Hotline: 1900 2026
+                    <h4 class="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Liên hệ</h4>
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Tầng 12, Innovation Hub<br/>
+                        Quận 1, TP. Hồ Chí Minh<br/>
+                        <span class="text-[#2563eb]">Hotline: 1900 2026</span>
                     </p>
                 </div>
             </div>
 
-            <div class="border-t border-slate-200 dark:border-slate-800 pt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                <p>&copy; 2026 VTHR Solutions. Đã đăng ký bản quyền.</p>
+            <div class="mt-10 border-t border-slate-200 pt-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-500">
+                <p>&copy; 2026 VTHR Solutions. Bản quyền thuộc VTHR Group.</p>
             </div>
         </div>
     </footer>
@@ -148,12 +216,15 @@
             return {
                 user: JSON.parse(localStorage.getItem('user')) || null,
                 isDarkMode: false,
+                mobileMenuOpen: false,
+
                 init() {
-                    this.isDarkMode = localStorage.getItem('theme') === 'dark';
+                    const stored = localStorage.getItem('theme');
+                    this.isDarkMode = stored === 'dark';
                     document.documentElement.classList.toggle('dark', this.isDarkMode);
 
                     const urlParams = new URLSearchParams(window.location.search);
-                    if(urlParams.get('expired')) {
+                    if (urlParams.get('expired')) {
                         Swal.fire({ icon: 'warning', title: 'Phiên đăng nhập hết hạn!', text: 'Vui lòng đăng nhập lại.' });
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
@@ -161,12 +232,42 @@
                     if (typeof AOS !== 'undefined') {
                         AOS.init({ duration: 650, once: true, easing: 'ease-out-cubic' });
                     }
+
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
+
+                    this.$watch('user', () => {
+                        this.$nextTick(() => {
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        });
+                    });
+
+                    this.$watch('mobileMenuOpen', (open) => {
+                        if (open) {
+                            this.$nextTick(() => {
+                                if (typeof lucide !== 'undefined') lucide.createIcons();
+                            });
+                        }
+                    });
+
+                    window.addEventListener('vthr:local-user-updated', () => {
+                        this.user = JSON.parse(localStorage.getItem('user') || 'null');
+                        this.$nextTick(() => {
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        });
+                    });
                 },
+
                 toggleDarkMode() {
                     this.isDarkMode = !this.isDarkMode;
                     localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
                     document.documentElement.classList.toggle('dark', this.isDarkMode);
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
                 },
+
                 async logout() {
                     try {
                         const refreshToken = localStorage.getItem('refreshToken');
@@ -174,12 +275,12 @@
                             method: 'POST',
                             body: JSON.stringify({ refreshToken })
                         });
-                    } catch(e) {} // ignore fail
+                    } catch (e) { /* ignore */ }
                     api.clearTokens();
                     this.user = null;
                     window.location.href = '/login';
                 }
-            }
+            };
         }
     </script>
 </body>

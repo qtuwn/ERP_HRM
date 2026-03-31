@@ -5,6 +5,7 @@ import com.vthr.erp_hrm.core.model.JobStatus;
 import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.service.JobService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class JobServiceImpl implements JobService {
 
     private final JobRepository jobRepository;
@@ -34,6 +36,11 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    public Page<Job> getJobsByCompanyId(UUID companyId, Pageable pageable) {
+        return jobRepository.findByCompanyId(companyId, pageable);
+    }
+
+    @Override
     public Job getJobById(UUID id) {
         return jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
     }
@@ -49,22 +56,53 @@ public class JobServiceImpl implements JobService {
 
     @Override
     public Job createJob(Job job, UUID createdBy) {
-        job.setStatus(JobStatus.DRAFT);
-        job.setCreatedBy(createdBy);
-        return jobRepository.save(job);
+        try {
+            job.setStatus(JobStatus.DRAFT);
+            job.setCreatedBy(createdBy);
+            return jobRepository.save(job);
+        } catch (Exception e) {
+            log.error("FULL ERROR DETAILS: createJob failed. createdBy={}, job={}", createdBy, job, e);
+            throw e;
+        }
     }
 
     @Override
     public Job updateJob(UUID id, Job jobDetails) {
         Job existing = getJobById(id);
 
-        existing.setTitle(jobDetails.getTitle());
-        existing.setDescription(jobDetails.getDescription());
-        existing.setDepartment(jobDetails.getDepartment());
-        existing.setRequiredSkills(jobDetails.getRequiredSkills());
-        existing.setExpiresAt(jobDetails.getExpiresAt());
+        try {
+            existing.setTitle(jobDetails.getTitle());
+            existing.setIndustry(jobDetails.getIndustry());
+            existing.setLevel(jobDetails.getLevel());
+            existing.setJobType(jobDetails.getJobType());
+            existing.setSalaryType(jobDetails.getSalaryType());
+            existing.setSalaryMin(jobDetails.getSalaryMin());
+            existing.setSalaryMax(jobDetails.getSalaryMax());
+            existing.setSalaryCurrency(jobDetails.getSalaryCurrency());
 
-        return jobRepository.save(existing);
+            existing.setDescription(jobDetails.getDescription());
+            existing.setRequirements(jobDetails.getRequirements());
+            existing.setBenefits(jobDetails.getBenefits());
+            existing.setRequiredSkills(jobDetails.getRequiredSkills());
+            existing.setTags(jobDetails.getTags());
+
+            existing.setCompanyName(jobDetails.getCompanyName());
+            existing.setCompanyLogo(jobDetails.getCompanyLogo());
+            existing.setAddress(jobDetails.getAddress());
+            existing.setCity(jobDetails.getCity());
+            existing.setCompanySize(jobDetails.getCompanySize());
+
+            existing.setDepartment(jobDetails.getDepartment());
+            existing.setNotificationEmail(jobDetails.getNotificationEmail());
+            existing.setNumberOfPositions(jobDetails.getNumberOfPositions());
+
+            existing.setExpiresAt(jobDetails.getExpiresAt());
+
+            return jobRepository.save(existing);
+        } catch (Exception e) {
+            log.error("FULL ERROR DETAILS: updateJob failed. id={}, jobDetails={}", id, jobDetails, e);
+            throw e;
+        }
     }
 
     @Override

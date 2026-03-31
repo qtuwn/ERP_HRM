@@ -13,6 +13,8 @@ public interface JobService {
 
     Page<Job> getJobsByDepartment(String department, Pageable pageable);
 
+    Page<Job> getJobsByCompanyId(UUID companyId, Pageable pageable);
+
     Job getJobById(UUID id);
 
     Job getPublicJobById(UUID id);

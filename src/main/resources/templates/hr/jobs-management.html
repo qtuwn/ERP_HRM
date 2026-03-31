@@ -1,79 +1,87 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{fragments/layout :: layout('Quản lý tin tuyển dụng', ~{::section})}">
+      th:replace="~{admin/layout :: layout('Quản lý tin tuyển dụng', ~{::content})}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý tin tuyển dụng</title>
-    <!-- Quill Rich Text Editor CDN -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 </head>
 <body>
-<section>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="jobsManagementPage()">
+<th:block th:fragment="content">
+    <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.6/quill.snow.css"/>
+    <div class="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8" x-data="jobsManagementPage()">
         <!-- Jobs List -->
         <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Quản lý tin tuyển dụng</h1>
-                <p class="text-sm text-gray-500">Tạo, chỉnh sửa, mở/đóng tuyển dụng và xóa các vị trí công việc của công ty bạn.</p>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Quản lý tin tuyển dụng</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Tạo, chỉnh sửa, mở/đóng tuyển dụng và xóa các vị trí công việc của công ty bạn.</p>
             </div>
-            <div class="flex items-center gap-2">
-                <button @click="openCreateModal()" class="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded shadow-sm transition text-sm font-medium">
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" @click="openCreateModal()"
+                        class="inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1d4ed8]">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
                     Tạo tin tuyển dụng mới
                 </button>
-                <button @click="fetchJobs()" class="border px-4 py-2 rounded shadow-sm hover:shadow transition text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                <button type="button" @click="fetchJobs()"
+                        class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[#2563eb] shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-[#60a5fa] dark:hover:bg-slate-800">
+                    <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                     Làm mới
                 </button>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div class="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="p-6" x-show="jobsLoading">
-                <p class="text-sm text-gray-500">Đang tải danh sách job...</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách job...</p>
             </div>
 
-            <div class="overflow-x-auto" x-show="!jobsLoading">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+            <div class="w-full overflow-x-auto" x-show="!jobsLoading">
+                <table class="w-full min-w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
+                    <thead class="bg-slate-50 dark:bg-slate-800/80">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tiêu đề</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cấp bậc</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Loại hình</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trạng thái</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Hạn nộp</th>
-                        <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Hành động</th>
+                        <th class="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tiêu đề</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cấp bậc</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Loại hình</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Trạng thái</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Hạn nộp</th>
+                        <th class="w-[200px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Hành động</th>
                     </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     <template x-for="job in jobs" :key="job.id">
-                        <tr class="hover:bg-gray-50/70">
-                            <td class="px-6 py-4">
-                                <p class="font-medium text-gray-900" x-text="job.title || 'Không có tiêu đề'"></p>
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                            <td class="px-4 py-4">
+                                <p class="font-medium text-slate-900 dark:text-white" x-text="job.title || 'Không có tiêu đề'"></p>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700" x-text="job.level || '-'"></td>
-                            <td class="px-6 py-4 text-sm text-gray-700" x-text="job.jobType || '-'"></td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                            <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300" x-text="job.level || '-'"></td>
+                            <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300" x-text="job.jobType || '-'"></td>
+                            <td class="px-4 py-4">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
                                       :class="statusClass(job.status)"
                                       x-text="statusLabel(job.status)"></span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(job.expiresAt)"></td>
-                            <td class="px-6 py-4">
-                                <div class="flex justify-end gap-2 flex-wrap">
-                                    <button @click="goKanban(job.id)" class="px-3 py-1.5 text-xs rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50">
-                                        Ứng viên
+                            <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400" x-text="formatDate(job.expiresAt)"></td>
+                            <td class="px-4 py-4">
+                                <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                    <button type="button" @click="goKanban(job.id)" title="Xem ứng viên (Kanban)"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-[#2563eb] transition hover:bg-[#2563eb]/10 dark:border-slate-600 dark:hover:bg-[#2563eb]/20">
+                                        <i data-lucide="eye" class="h-4 w-4"></i>
                                     </button>
-                                    <button @click="openEditModal(job)" class="px-3 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-50">
-                                        Sửa
+                                    <button type="button" @click="openEditModal(job)" title="Sửa tin"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <i data-lucide="pencil" class="h-4 w-4"></i>
                                     </button>
-                                    <button x-show="job.status !== 'OPEN'" @click="publishJob(job)" class="px-3 py-1.5 text-xs rounded-md border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                                        Mở tuyển
+                                    <button type="button" x-show="job.status !== 'OPEN'" @click="publishJob(job)" title="Mở tuyển"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40">
+                                        <i data-lucide="circle-check" class="h-4 w-4"></i>
                                     </button>
-                                    <button x-show="job.status === 'OPEN'" @click="closeJob(job)" class="px-3 py-1.5 text-xs rounded-md border border-amber-200 text-amber-700 hover:bg-amber-50">
-                                        Đóng tuyển
+                                    <button type="button" x-show="job.status === 'OPEN'" @click="closeJob(job)" title="Đóng tuyển"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 text-amber-700 transition hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40">
+                                        <i data-lucide="ban" class="h-4 w-4"></i>
                                     </button>
-                                    <button @click="deleteJob(job)" class="px-3 py-1.5 text-xs rounded-md border border-red-200 text-red-700 hover:bg-red-50">
-                                        Xóa
+                                    <button type="button" @click="deleteJob(job)" title="Xóa tin"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40">
+                                        <i data-lucide="trash-2" class="h-4 w-4"></i>
                                     </button>
                                 </div>
                             </td>
@@ -83,22 +91,22 @@
                 </table>
             </div>
 
-            <div x-show="!jobsLoading && jobs.length === 0" class="px-6 py-8 text-sm text-gray-500 text-center">
+            <div x-show="!jobsLoading && jobs.length === 0" class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                 Chưa có tin tuyển dụng nào.
             </div>
 
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <p class="text-sm text-gray-500">Tổng: <span class="font-semibold" x-text="jobsTotalElements"></span> tin</p>
+            <div class="flex items-center justify-between border-t border-slate-200 px-4 py-4 dark:border-slate-700">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Tổng: <span class="font-semibold text-slate-800 dark:text-slate-200" x-text="jobsTotalElements"></span> tin</p>
                 <div class="flex items-center gap-2">
-                    <button @click="prevJobsPage()" :disabled="jobsPage <= 0"
-                            class="px-3 py-1.5 text-sm rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                    <button type="button" @click="prevJobsPage()" :disabled="jobsPage <= 0"
+                            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
                         Trước
                     </button>
-                    <span class="text-sm text-gray-600">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">
                         <span x-text="jobsPage + 1"></span>/<span x-text="Math.max(jobsTotalPages, 1)"></span>
                     </span>
-                    <button @click="nextJobsPage()" :disabled="jobsPage + 1 >= jobsTotalPages"
-                            class="px-3 py-1.5 text-sm rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                    <button type="button" @click="nextJobsPage()" :disabled="jobsPage + 1 >= jobsTotalPages"
+                            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
                         Sau
                     </button>
                 </div>
@@ -106,18 +114,18 @@
         </div>
 
         <!-- 3-Step Modal Form -->
-        <div x-show="showJobModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-            <div class="flex items-center justify-center min-h-screen px-4 py-16">
+        <div x-show="showJobModal" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
+            <div class="flex min-h-screen items-center justify-center px-4 py-16">
                 <div class="fixed inset-0 bg-black/40" @click="closeJobModal()"></div>
                 
-                <div class="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <div class="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-900">
                     <!-- Modal Header -->
-                    <div class="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 text-white">
+                    <div class="sticky top-0 bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-4 text-white">
                         <h2 class="text-xl font-bold">
                             <span x-show="!editingJobId">Tạo tin tuyển dụng mới</span>
                             <span x-show="editingJobId">Cập nhật tin tuyển dụng</span>
                         </h2>
-                        <p class="text-indigo-100 text-sm mt-1">Bước <span x-text="currentStep"></span>/3</p>
+                        <p class="mt-1 text-sm text-white/80">Bước <span x-text="currentStep"></span>/3</p>
                     </div>
 
                     <!-- Stepper Indicator -->
@@ -125,9 +133,9 @@
                         <div class="flex items-center justify-between">
                             <template x-for="step in [1, 2, 3]" :key="step">
                                 <div class="flex-1 flex items-center" :class="step < 3 ? 'mr-2' : ''">
-                                    <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition', step <= currentStep ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600']"
+                                    <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition', step <= currentStep ? 'bg-[#2563eb] text-white' : 'bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300']"
                                          x-text="step"></div>
-                                    <div :class="['flex-1 h-1 mx-2 rounded transition', step < currentStep ? 'bg-indigo-600' : 'bg-gray-200']"
+                                    <div :class="['flex-1 h-1 mx-2 rounded transition', step < currentStep ? 'bg-[#2563eb]' : 'bg-gray-200 dark:bg-slate-700']"
                                          x-show="step < 3"></div>
                                 </div>
                             </template>
@@ -338,8 +346,8 @@
                             <span x-show="currentStep === 1">Hủy</span>
                         </button>
                         <div class="flex gap-3">
-                            <button @click="currentStep < 3 ? currentStep++ : saveJob()"
-                                    class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
+                            <button type="button" @click="currentStep < 3 ? currentStep++ : saveJob()"
+                                    class="rounded bg-[#2563eb] px-4 py-2 text-white transition hover:bg-[#1d4ed8]">
                                 <span x-show="currentStep < 3">Tiếp tục →</span>
                                 <span x-show="currentStep === 3">Lưu & Đăng tin</span>
                             </button>
@@ -392,14 +400,21 @@
                     expiresAt: ''
                 },
 
+                refreshLucide() {
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
+                },
+
                 async init() {
                     const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
-                    if (!currentUser || !['HR', 'ADMIN'].includes(currentUser.role)) {
+                    if (!currentUser || !['HR', 'ADMIN', 'COMPANY'].includes(currentUser.role)) {
                         window.location.href = '/login?expired=true&reason=forbidden';
                         return;
                     }
                     this.userDepartment = currentUser.department || '';
-                    this.fetchJobs();
+                    await this.fetchJobs();
+                    this.refreshLucide();
                 },
 
                 async fetchJobs() {
@@ -425,6 +440,7 @@
                         api.showError('Lỗi', err?.data?.message || 'Không thể tải danh sách job.');
                     } finally {
                         this.jobsLoading = false;
+                        this.refreshLucide();
                     }
                 },
 
@@ -466,7 +482,10 @@
                         expiresAt: ''
                     };
                     this.showJobModal = true;
-                    this.$nextTick(() => this.initializeEditors());
+                    this.$nextTick(() => {
+                        this.initializeEditors();
+                        this.refreshLucide();
+                    });
                 },
 
                 openEditModal(job) {
@@ -495,7 +514,10 @@
                         expiresAt: this.toDateTimeLocal(job.expiresAt)
                     };
                     this.showJobModal = true;
-                    this.$nextTick(() => this.initializeEditors());
+                    this.$nextTick(() => {
+                        this.initializeEditors();
+                        this.refreshLucide();
+                    });
                 },
 
                 closeJobModal() {
@@ -508,9 +530,21 @@
                         if (el) el.innerHTML = '';
                     });
                     this.editors = {};
+                    this.refreshLucide();
                 },
 
                 initializeEditors() {
+                    if (typeof Quill === 'undefined') {
+                        console.error('Quill is not loaded. Cannot initialize editors.');
+                        return;
+                    }
+                    const descEl = document.getElementById('description-editor');
+                    const reqEl = document.getElementById('requirements-editor');
+                    const benEl = document.getElementById('benefits-editor');
+                    if (!descEl || !reqEl || !benEl) {
+                        console.error('Quill editor elements are missing in DOM.', { descEl, reqEl, benEl });
+                        return;
+                    }
                     ['description', 'requirements', 'benefits'].forEach(key => {
                         this.editors[key] = null;
                         const el = document.getElementById(`${key}-editor`);
@@ -585,7 +619,29 @@
                     return local.toISOString().slice(0, 16);
                 },
 
+                parseDateTimeLocal(value) {
+                    if (!value) return null;
+                    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?(?:\.([0-9]{1,3}))?$/.exec(String(value));
+                    if (!m) return null;
+                    const year = Number(m[1]);
+                    const month = Number(m[2]);
+                    const day = Number(m[3]);
+                    const hour = Number(m[4]);
+                    const minute = Number(m[5]);
+                    const second = Number(m[6] || 0);
+                    const ms = String(m[7] || '0').padEnd(3, '0');
+                    return new Date(year, month - 1, day, hour, minute, second, Number(ms));
+                },
+
+                toISOStringFromDateTimeLocal(value) {
+                    const d = this.parseDateTimeLocal(value);
+                    if (!d || Number.isNaN(d.getTime())) return null;
+                    return d.toISOString();
+                },
+
                 jobPayload() {
+                    // Defensive: tránh lỗi JS trước khi gọi API (undefined/null .trim)
+                    const safeTrim = (v) => (v ?? '').toString().trim();
                     return {
                         title: (this.jobForm.title || '').trim(),
                         industry: (this.jobForm.industry || '').trim(),
@@ -599,19 +655,29 @@
                         requirements: this.jobForm.requirements,
                         benefits: this.jobForm.benefits,
                         tags: (this.jobForm.tags || '').trim(),
+                        // Backend đang lưu `requiredSkills` vào cột `required_skills`.
+                        // UI hiện dùng `tags` để nhập kỹ năng → map sang requiredSkills để không bị NULL.
+                        requiredSkills: safeTrim(this.jobForm.tags),
                         companyName: (this.jobForm.companyName || '').trim(),
                         address: (this.jobForm.address || '').trim(),
                         city: (this.jobForm.city || '').trim(),
                         companySize: (this.jobForm.companySize || '').trim(),
-                        department: (this.jobForm.department || this.userDepartment).trim(),
+                        department: safeTrim(this.jobForm.department ?? this.userDepartment),
                         notificationEmail: (this.jobForm.notificationEmail || '').trim(),
                         numberOfPositions: this.jobForm.numberOfPositions || 1,
-                        expiresAt: this.jobForm.expiresAt
+                        expiresAt: this.toISOStringFromDateTimeLocal(this.jobForm.expiresAt)
                     };
                 },
 
                 async saveJob() {
-                    const payload = this.jobPayload();
+                    let payload;
+                    try {
+                        payload = this.jobPayload();
+                    } catch (err) {
+                        console.error('jobPayload() crashed:', err);
+                        api.showError('Thao tác thất bại', 'Lỗi JavaScript khi chuẩn bị dữ liệu. Mở Console để xem chi tiết.');
+                        return;
+                    }
                     if (!payload.title || !payload.description || !payload.city) {
                         api.showError('Thiếu dữ liệu', 'Vui lòng điền đầy đủ các trường bắt buộc (Tiêu đề, Mô tả, Địa điểm).');
                         return;
@@ -641,6 +707,7 @@
                         this.closeJobModal();
                         await this.fetchJobs();
                     } catch (err) {
+                        console.error('saveJob() failed:', err);
                         api.showError('Thao tác thất bại', err?.data?.message || 'Không thể lưu tin tuyển dụng.');
                     }
                 },
@@ -710,9 +777,9 @@
                 },
 
                 statusClass(status) {
-                    if (status === 'OPEN') return 'bg-emerald-100 text-emerald-700';
-                    if (status === 'CLOSED') return 'bg-amber-100 text-amber-700';
-                    return 'bg-slate-100 text-slate-700';
+                    if (status === 'OPEN') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
+                    if (status === 'CLOSED') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+                    return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
                 },
 
                 formatDate(value) {
@@ -724,6 +791,6 @@
             }
         }
     </script>
-</section>
+</th:block>
 </body>
 </html>

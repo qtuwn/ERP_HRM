@@ -16,6 +16,7 @@ public class KanbanApplicationResponse {
     private String status;
     private String aiStatus;
     private Integer aiScore;
+    private String aiSuitability;
     private String cvUrl;
     private ZonedDateTime createdAt;
 }

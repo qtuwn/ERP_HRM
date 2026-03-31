@@ -39,6 +39,7 @@ public class JobResponse {
     private String companySize;
 
     // HR Logic
+    private UUID companyId;
     private String department;
     private String notificationEmail;
     private Integer numberOfPositions;
@@ -74,6 +75,7 @@ public class JobResponse {
                 .address(job.getAddress())
                 .city(job.getCity())
                 .companySize(job.getCompanySize())
+                .companyId(job.getCompanyId())
                 .department(job.getDepartment())
                 .notificationEmail(job.getNotificationEmail())
                 .numberOfPositions(job.getNumberOfPositions())

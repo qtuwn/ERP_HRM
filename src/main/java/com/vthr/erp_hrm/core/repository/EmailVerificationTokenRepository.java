@@ -12,4 +12,8 @@ public interface EmailVerificationTokenRepository {
     List<EmailVerificationToken> findActiveByUserId(UUID userId);
 
     EmailVerificationToken save(EmailVerificationToken token);
+
+    Optional<EmailVerificationToken> findLatestByUserId(UUID userId);
+
+    void deleteById(UUID id);
 }

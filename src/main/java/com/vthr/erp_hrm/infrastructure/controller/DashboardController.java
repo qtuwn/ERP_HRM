@@ -22,7 +22,7 @@ public class DashboardController {
     }
 
     @GetMapping("/api/dashboard/stats")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     @ResponseBody
     public ResponseEntity<ApiResponse<DashboardStatsResponse>> getDashboardStats() {
         return ResponseEntity.ok(ApiResponse.success(

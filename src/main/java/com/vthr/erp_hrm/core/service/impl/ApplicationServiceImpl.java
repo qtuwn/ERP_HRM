@@ -49,6 +49,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .candidateId(candidateId)
                 .cvUrl(cvUrl)
                 .status(ApplicationStatus.APPLIED) // Fixed to APPLIED from PENDING originally via mapper
+                .aiStatus("AI_PROCESSING")
                 .build();
         Application saved = applicationRepository.save(application);
         aiQueueService.enqueueApplication(saved.getId());
@@ -78,10 +79,13 @@ public class ApplicationServiceImpl implements ApplicationService {
             String candidateEmail = candidate != null ? candidate.getEmail() : "Unknown";
 
             Integer aiScore = null;
+            String aiSuitability = null;
             com.vthr.erp_hrm.core.model.AIEvaluation eval = aiEvaluationRepository.findByApplicationId(app.getId())
                     .orElse(null);
             if (eval != null) {
                 aiScore = eval.getScore();
+                // Worker đang lưu suitability vào discrepancy
+                aiSuitability = eval.getDiscrepancy();
             }
 
             return com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse.builder()
@@ -92,6 +96,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                     .status(app.getStatus() != null ? app.getStatus().name() : null)
                     .aiStatus(app.getAiStatus())
                     .aiScore(aiScore)
+                    .aiSuitability(aiSuitability)
                     .cvUrl(app.getCvUrl())
                     .createdAt(app.getCreatedAt())
                     .build();

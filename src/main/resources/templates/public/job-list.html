@@ -19,53 +19,68 @@
         }
     </style>
 
-    <div data-aos="fade-up" class="relative rounded-3xl overflow-hidden border border-slate-200 bg-[#1D6FEB] text-white shadow-xl">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(29,111,235,0.28),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(29,111,235,0.24),_transparent_48%)]"></div>
-        <div class="absolute -right-10 -top-10 w-64 h-64 rounded-full bg-[#1D6FEB]/30 blur-2xl"></div>
-        <div class="absolute -left-10 -bottom-10 w-64 h-64 rounded-full bg-[#1D6FEB]/25 blur-2xl"></div>
+    <div data-aos="fade-up" class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white shadow-xl shadow-[#2563eb]/20">
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.12),transparent_50%),radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.08),transparent_45%)]"></div>
+        <div class="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
+        <div class="absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-[#1d4ed8]/40 blur-3xl"></div>
 
         <div class="relative p-8 sm:p-10 lg:p-12">
             <div class="max-w-4xl">
-                <div class="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.18em] uppercase text-white/85 mb-4">
+                <div class="mb-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
                     VTHR Careers Hub
                 </div>
-                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+                <h1 class="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
                     Khám phá công việc phù hợp với kỹ năng và mục tiêu của bạn
                 </h1>
-                <p class="mt-4 text-slate-200 max-w-3xl text-sm sm:text-base leading-relaxed">
+                <p class="mt-4 max-w-3xl text-sm leading-relaxed text-white/90 sm:text-base">
                     Tìm kiếm theo từ khóa, ngành nghề và địa điểm để rút ngắn thời gian ứng tuyển.
                     Theo dõi công việc yêu thích và ứng tuyển nhanh chỉ với một lần nhấn.
                 </p>
             </div>
 
-            <div class="mt-8 bg-white/95 rounded-2xl p-4 sm:p-5 border border-white/85 shadow-lg">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="mt-8 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-xl backdrop-blur-sm dark:bg-slate-900/95 sm:p-5">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Từ khóa</span>
-                        <input x-model.trim="filters.keyword" type="text" placeholder="VD: Backend Java"
-                               class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none" />
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Từ khóa</span>
+                        <div class="relative mt-1">
+                            <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+                                <i data-lucide="search" class="h-5 w-5"></i>
+                            </span>
+                            <input x-model.trim="filters.keyword" type="text" placeholder="VD: Backend Java"
+                                   class="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"/>
+                        </div>
                     </label>
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Ngành nghề</span>
-                        <input x-model.trim="filters.department" type="text" placeholder="VD: Human Resources"
-                               class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none" />
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Ngành nghề</span>
+                        <div class="relative mt-1">
+                            <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+                                <i data-lucide="briefcase" class="h-5 w-5"></i>
+                            </span>
+                            <input x-model.trim="filters.department" type="text" placeholder="VD: Human Resources"
+                                   class="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"/>
+                        </div>
                     </label>
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Địa điểm</span>
-                        <input x-model.trim="filters.location" type="text" placeholder="VD: Ho Chi Minh"
-                               class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none" />
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Địa điểm</span>
+                        <div class="relative mt-1">
+                            <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+                                <i data-lucide="map-pin" class="h-5 w-5"></i>
+                            </span>
+                            <input x-model.trim="filters.location" type="text" placeholder="VD: TP. Hồ Chí Minh"
+                                   class="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"/>
+                        </div>
                     </label>
-                    <button @click="applyFilters()"
-                            class="mt-5 md:mt-0 md:self-end bg-[#1D6FEB] hover:bg-[#185BC1] text-white px-5 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-[#1D6FEB]/35">
+                    <button type="button" @click="applyFilters()"
+                            class="mt-5 rounded-xl bg-[#2563eb] px-5 py-3 font-bold text-white shadow-lg shadow-[#2563eb]/30 transition hover:bg-[#1d4ed8] md:mt-0 md:self-end">
                         Tìm kiếm
                     </button>
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Mức lương</span>
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Mức lương</span>
                         <select x-model="filters.salaryBand"
-                                class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none">
+                                class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                             <option value="">Tất cả</option>
                             <option value="under-10">Dưới 10 triệu</option>
                             <option value="10-20">10 - 20 triệu</option>
@@ -75,9 +90,9 @@
                         </select>
                     </label>
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Cấp bậc</span>
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Cấp bậc</span>
                         <select x-model="filters.level"
-                                class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none">
+                                class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                             <option value="">Tất cả</option>
                             <option value="Intern">Intern</option>
                             <option value="Junior">Junior</option>
@@ -85,9 +100,9 @@
                         </select>
                     </label>
                     <label class="block">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700">Loại hình</span>
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">Loại hình</span>
                         <select x-model="filters.workType"
-                                class="mt-1 w-full px-3 py-3 rounded-xl border border-slate-300 text-slate-800 focus:ring-2 focus:ring-[#1D6FEB] focus:border-[#1D6FEB] outline-none">
+                                class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-slate-800 shadow-sm transition-all duration-200 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 focus:shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                             <option value="">Tất cả</option>
                             <option value="Remote">Remote</option>
                             <option value="Hybrid">Hybrid</option>
@@ -96,8 +111,8 @@
                             <option value="Part-time">Part-time</option>
                         </select>
                     </label>
-                    <button @click="resetFilters()"
-                            class="mt-5 sm:mt-0 sm:self-end bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-xl font-semibold transition-colors border border-slate-300">
+                    <button type="button" @click="resetFilters()"
+                            class="mt-5 rounded-xl border border-slate-300 bg-slate-100 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:mt-0 sm:self-end">
                         Xóa bộ lọc
                     </button>
                 </div>
@@ -112,22 +127,22 @@
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button @click="quickCategoryApply('Công nghệ thông tin')" class="group rounded-2xl border border-slate-200 p-5 text-left hover:shadow-md hover:-translate-y-1 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-[#1D6FEB]/10 text-[#1D6FEB] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">💻</div>
+                <div class="w-12 h-12 rounded-xl bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">💻</div>
                 <div class="font-semibold text-slate-900">Công nghệ thông tin</div>
                 <div class="text-xs text-slate-500 mt-1">Backend, Frontend, DevOps</div>
             </button>
             <button @click="quickCategoryApply('Marketing')" class="group rounded-2xl border border-slate-200 p-5 text-left hover:shadow-md hover:-translate-y-1 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-[#1D6FEB]/10 text-[#1D6FEB] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">📈</div>
+                <div class="w-12 h-12 rounded-xl bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">📈</div>
                 <div class="font-semibold text-slate-900">Marketing</div>
                 <div class="text-xs text-slate-500 mt-1">Digital, Content, Branding</div>
             </button>
             <button @click="quickCategoryApply('Tài chính')" class="group rounded-2xl border border-slate-200 p-5 text-left hover:shadow-md hover:-translate-y-1 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-[#1D6FEB]/10 text-[#1D6FEB] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">💰</div>
+                <div class="w-12 h-12 rounded-xl bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">💰</div>
                 <div class="font-semibold text-slate-900">Tài chính</div>
                 <div class="text-xs text-slate-500 mt-1">Kế toán, FP&A, Kiểm toán</div>
             </button>
             <button @click="quickCategoryApply('Thiết kế')" class="group rounded-2xl border border-slate-200 p-5 text-left hover:shadow-md hover:-translate-y-1 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-[#1D6FEB]/10 text-[#1D6FEB] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">🎨</div>
+                <div class="w-12 h-12 rounded-xl bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">🎨</div>
                 <div class="font-semibold text-slate-900">Thiết kế</div>
                 <div class="text-xs text-slate-500 mt-1">UI/UX, Product Design, Motion</div>
             </button>
@@ -143,7 +158,7 @@
             <div class="logo-marquee-track gap-4">
                 <template x-for="(company, index) in [...topCompanies, ...topCompanies]" :key="index">
                     <div class="w-52 shrink-0 rounded-xl border border-slate-200 p-4 flex items-center gap-3 bg-slate-50/70 opacity-70 hover:opacity-100 transition-opacity grayscale hover:grayscale-0">
-                        <div class="w-10 h-10 rounded-lg bg-[#1D6FEB]/15 text-[#1D6FEB] font-bold flex items-center justify-center" x-text="company.short"></div>
+                        <div class="w-10 h-10 rounded-lg bg-[#2563eb]/15 text-[#2563eb] font-bold flex items-center justify-center" x-text="company.short"></div>
                         <div>
                             <div class="font-semibold text-slate-900" x-text="company.name"></div>
                             <div class="text-xs text-slate-500" x-text="company.industry"></div>
@@ -170,7 +185,7 @@
             <article data-aos="fade-up" class="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col h-full">
                 <div class="flex items-start justify-between gap-3 mb-4">
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-11 h-11 rounded-xl bg-[#1D6FEB] text-white flex items-center justify-center font-bold shadow">
+                        <div class="w-11 h-11 rounded-xl bg-[#2563eb] text-white flex items-center justify-center font-bold shadow">
                             V
                         </div>
                         <div class="min-w-0">
@@ -178,51 +193,51 @@
                             <div class="font-semibold text-slate-900 truncate" x-text="job.title"></div>
                         </div>
                     </div>
-                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-[#1D6FEB]/12 text-[#1D6FEB]" x-text="job.department || 'General'"></span>
+                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-[#2563eb]/12 text-[#2563eb]" x-text="job.department || 'General'"></span>
                 </div>
 
                 <p class="text-slate-700 text-sm leading-6 line-clamp-3" x-text="job.description"></p>
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1D6FEB]/10 text-[#1D6FEB]" x-text="formatSalary(job)"></span>
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1D6FEB]/10 text-[#1D6FEB]" x-text="deriveWorkType(job)"></span>
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1D6FEB]/10 text-[#1D6FEB]" x-text="deriveLocation(job)"></span>
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1D6FEB]/10 text-[#1D6FEB]" x-text="deriveLevel(job)"></span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2563eb]/10 text-[#2563eb]" x-text="formatSalary(job)"></span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2563eb]/10 text-[#2563eb]" x-text="deriveWorkType(job)"></span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2563eb]/10 text-[#2563eb]" x-text="deriveLocation(job)"></span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#2563eb]/10 text-[#2563eb]" x-text="deriveLevel(job)"></span>
                 </div>
 
                 <div class="mt-5 pt-4 border-t border-slate-200 space-y-3 mt-auto">
                     <div class="flex items-center justify-between text-xs text-slate-600 font-medium">
                         <span>Hạn nộp: <span x-text="new Date(job.expiresAt).toLocaleDateString('vi-VN')"></span></span>
-                        <button @click="toggleSave(job.id)" class="text-slate-700 hover:text-[#1D6FEB]">
+                        <button @click="toggleSave(job.id)" class="text-slate-700 hover:text-[#2563eb]">
                             <span x-text="savedJobs.has(job.id) ? 'Da luu' : 'Luu viec'"></span>
                         </button>
                     </div>
 
                     <div class="flex items-center justify-between gap-2">
                         <a :href="'/jobs/' + job.id"
-                           class="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-[#1D6FEB] text-[#1D6FEB] text-sm font-semibold hover:bg-[#1D6FEB]/10 transition-colors">
+                           class="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-[#2563eb] text-[#2563eb] text-sm font-semibold hover:bg-[#2563eb]/10 transition-colors">
                             Chi tiết
                         </a>
                         <a :href="'/jobs/' + job.id + '/apply'"
-                           class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-[#1D6FEB] text-white text-sm font-semibold hover:bg-[#185BC1] transition-colors">
+                           class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-[#1d4ed8] transition-colors">
                             Quick Apply
                         </a>
                     </div>
 
                     <div class="flex items-center gap-3 text-xs text-slate-600">
                         <span>Chia sẻ:</span>
-                        <button @click="shareLinkedIn(job.id)" class="hover:text-[#1D6FEB] font-semibold">LinkedIn</button>
-                        <button @click="shareFacebook(job.id)" class="hover:text-[#1D6FEB] font-semibold">Facebook</button>
+                        <button @click="shareLinkedIn(job.id)" class="hover:text-[#2563eb] font-semibold">LinkedIn</button>
+                        <button @click="shareFacebook(job.id)" class="hover:text-[#2563eb] font-semibold">Facebook</button>
                     </div>
                 </div>
             </article>
         </template>
 
         <div x-show="filteredJobs.length === 0" class="col-span-full text-center py-16 sm:py-20 bg-white rounded-2xl border border-slate-200 text-slate-500">
-            <div class="w-20 h-20 mx-auto rounded-full bg-[#1D6FEB]/10 text-[#1D6FEB] flex items-center justify-center text-3xl mb-4">🔎</div>
+            <div class="w-20 h-20 mx-auto rounded-full bg-[#2563eb]/10 text-[#2563eb] flex items-center justify-center text-3xl mb-4">🔎</div>
             <h3 class="text-lg font-bold text-slate-800 mb-2">Không tìm thấy công việc phù hợp</h3>
             <p class="max-w-md mx-auto text-sm text-slate-500">Hãy thử mở rộng từ khóa, đổi địa điểm hoặc reset bộ lọc để xem thêm cơ hội mới.</p>
-            <button @click="resetFilters()" class="mt-5 inline-flex items-center px-4 py-2 rounded-lg bg-[#1D6FEB] text-white font-semibold hover:bg-[#185BC1] transition-colors">
+            <button @click="resetFilters()" class="mt-5 inline-flex items-center px-4 py-2 rounded-lg bg-[#2563eb] text-white font-semibold hover:bg-[#1d4ed8] transition-colors">
                 Đặt lại bộ lọc
             </button>
         </div>
@@ -231,12 +246,12 @@
     <div data-aos="fade-up" class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
             <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Góc nghề nghiệp</h2>
-            <a href="#" class="text-sm font-semibold text-[#1D6FEB] hover:underline">Xem tất cả bài viết</a>
+            <a href="#" class="text-sm font-semibold text-[#2563eb] hover:underline">Xem tất cả bài viết</a>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <template x-for="post in blogPosts" :key="post.title">
                 <article class="rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                    <div class="h-36 bg-gradient-to-r from-[#1D6FEB] via-[#2F7CF0] to-[#76A8F7] flex items-end p-4">
+                    <div class="flex h-36 items-end bg-gradient-to-r from-[#2563eb] via-[#3b82f6] to-[#1d4ed8] p-4">
                         <span class="text-white/90 text-xs font-semibold uppercase tracking-wide" x-text="post.tag"></span>
                     </div>
                     <div class="p-4">
@@ -252,18 +267,18 @@
         <div class="flex items-center justify-between gap-3 mb-6">
             <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Cảm nhận người dùng</h2>
             <div class="flex items-center gap-2">
-                <button @click="prevTestimonial()" class="w-9 h-9 rounded-full border border-slate-300 hover:border-[#1D6FEB] hover:text-[#1D6FEB]">‹</button>
-                <button @click="nextTestimonial()" class="w-9 h-9 rounded-full border border-slate-300 hover:border-[#1D6FEB] hover:text-[#1D6FEB]">›</button>
+                <button @click="prevTestimonial()" class="w-9 h-9 rounded-full border border-slate-300 hover:border-[#2563eb] hover:text-[#2563eb]">‹</button>
+                <button @click="nextTestimonial()" class="w-9 h-9 rounded-full border border-slate-300 hover:border-[#2563eb] hover:text-[#2563eb]">›</button>
             </div>
         </div>
 
-        <div class="rounded-2xl bg-[#1D6FEB]/7 border border-[#1D6FEB]/15 p-6 sm:p-8 relative min-h-[220px]">
-            <div class="text-6xl leading-none text-[#1D6FEB]/20 absolute top-3 left-4">“</div>
+        <div class="rounded-2xl bg-[#2563eb]/7 border border-[#2563eb]/15 p-6 sm:p-8 relative min-h-[220px]">
+            <div class="text-6xl leading-none text-[#2563eb]/20 absolute top-3 left-4">“</div>
             <template x-for="(item, idx) in testimonials" :key="item.name">
                 <div x-show="idx === activeTestimonial" style="display:none;" class="relative">
                     <p class="text-slate-700 text-base sm:text-lg leading-relaxed mb-6" x-text="item.quote"></p>
                     <div class="flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-full bg-[#1D6FEB] text-white flex items-center justify-center font-bold" x-text="item.avatar"></div>
+                        <div class="w-11 h-11 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold" x-text="item.avatar"></div>
                         <div>
                             <div class="font-semibold text-slate-900" x-text="item.name"></div>
                             <div class="text-sm text-slate-500" x-text="item.role"></div>
@@ -274,7 +289,7 @@
         </div>
     </div>
 
-    <div data-aos="fade-up" class="rounded-2xl bg-[#1D6FEB] text-white p-6 sm:p-8 border border-[#1D6FEB] shadow-lg">
+    <div data-aos="fade-up" class="rounded-2xl bg-[#2563eb] text-white p-6 sm:p-8 border border-[#2563eb] shadow-lg">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-center">
             <div>
                 <h3 class="text-2xl font-bold">Đừng bỏ lỡ cơ hội!</h3>
@@ -283,7 +298,7 @@
             <form @submit.prevent="submitAlert()" class="flex flex-col sm:flex-row gap-3">
                 <input x-model.trim="jobAlertEmail" type="email" required placeholder="Nhập email của bạn"
                        class="flex-1 px-4 py-3 rounded-xl text-slate-900 border border-white/60 focus:ring-2 focus:ring-white outline-none" />
-                <button type="submit" class="px-5 py-3 rounded-xl bg-white text-[#1D6FEB] font-bold hover:bg-slate-100 transition-colors">
+                <button type="submit" class="px-5 py-3 rounded-xl bg-white text-[#2563eb] font-bold hover:bg-slate-100 transition-colors">
                     Đăng ký
                 </button>
             </form>
@@ -365,6 +380,9 @@
                         console.error('Failed to load jobs', e);
                     } finally {
                         this.loading = false;
+                        this.$nextTick(() => {
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        });
                     }
                 },
 

@@ -44,6 +44,16 @@ services:
       SPRING_DATA_REDIS_HOST: redis_cache
       SPRING_DATA_REDIS_PORT: 6379
       FLYWAY_ENABLED: true
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@vthr.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-VTHR Solutions}
+      JWT_SECRET: ${JWT_SECRET:-default_jwt_secret}
+      REFRESH_JWT_SECRET: ${REFRESH_JWT_SECRET:-default_refresh_jwt_secret}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AUTH_EMAIL_DEMO_LOG_ONLY: "true"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP || exit 1"]

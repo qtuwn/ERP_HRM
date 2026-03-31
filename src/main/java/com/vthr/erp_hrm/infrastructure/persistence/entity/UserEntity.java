@@ -62,6 +62,9 @@ public class UserEntity {
     @Column(name = "company_id")
     private UUID companyId;
 
+    @Column(name = "department_id")
+    private UUID departmentId;
+
     @Column(name = "department")
     private String department;
 

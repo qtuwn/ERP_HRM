@@ -17,6 +17,8 @@ public interface JobRepository {
 
     Page<Job> findByDepartment(String department, Pageable pageable);
 
+    Page<Job> findByCompanyId(java.util.UUID companyId, Pageable pageable);
+
     java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
 
     long count();

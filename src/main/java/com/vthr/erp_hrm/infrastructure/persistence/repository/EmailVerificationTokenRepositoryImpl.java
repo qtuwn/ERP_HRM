@@ -33,4 +33,14 @@ public class EmailVerificationTokenRepositoryImpl implements EmailVerificationTo
     public EmailVerificationToken save(EmailVerificationToken token) {
         return mapper.toDomain(jpaRepository.save(mapper.toEntity(token)));
     }
+
+    @Override
+    public Optional<EmailVerificationToken> findLatestByUserId(UUID userId) {
+        return jpaRepository.findTopByUserIdOrderByCreatedAtDesc(userId).map(mapper::toDomain);
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
+    }
 }

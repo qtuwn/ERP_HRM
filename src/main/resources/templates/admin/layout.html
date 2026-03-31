@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">VTHR Careers Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        /* Thương hiệu VTHR: chỉ xanh #2563eb / #1d4ed8 + nền trắng/xám trung tính */
+                        brand: {
+                            DEFAULT: '#2563eb',
+                            dark: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"/>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- Lucide: icon tối giản, trung tính -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans antialiased text-slate-800 dark:bg-slate-950 dark:text-slate-100"
+      x-data="globalState()">
+
+<!-- Mobile overlay -->
+<div class="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+     x-show="sidebarOpen"
+     x-transition.opacity
+     @click="sidebarOpen = false"
+     style="display: none;"></div>
+
+<div class="flex min-h-screen">
+    <div th:replace="~{admin/fragments/sidebar :: sidebar}"></div>
+
+    <div class="flex min-h-screen flex-1 flex-col min-w-0 lg:pl-64">
+        <div th:replace="~{admin/fragments/topbar :: topbar}"></div>
+
+        <main class="flex-1">
+            <div th:replace="${content}"></div>
+        </main>
+    </div>
+</div>
+
+<script>
+    function globalState() {
+        return {
+            user: JSON.parse(localStorage.getItem('user')) || null,
+            isDarkMode: false,
+            sidebarOpen: false,
+
+            init() {
+                const stored = localStorage.getItem('theme');
+                this.isDarkMode = stored === 'dark';
+                document.documentElement.classList.toggle('dark', this.isDarkMode);
+
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('expired')) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Phiên đăng nhập hết hạn!', text: 'Vui lòng đăng nhập lại.' });
+                    }
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+
+                if (typeof AOS !== 'undefined') {
+                    AOS.init({ duration: 650, once: true, easing: 'ease-out-cubic' });
+                }
+
+                this.$nextTick(() => {
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                });
+
+                this.$watch('user', () => {
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
+                });
+
+                window.addEventListener('vthr:local-user-updated', () => {
+                    this.user = JSON.parse(localStorage.getItem('user') || 'null');
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
+                });
+            },
+
+            navDashboard() {
+                return window.location.pathname === '/dashboard';
+            },
+
+            navJobsManagement() {
+                return window.location.pathname.startsWith('/jobs/management');
+            },
+
+            /** Kanban theo từng tin = theo dõi hồ sơ ứng viên */
+            navApplicationTracking() {
+                return /\/jobs\/[^/]+\/kanban$/.test(window.location.pathname);
+            },
+
+            navAdminUsers() {
+                return window.location.pathname === '/admin/users';
+            },
+
+            navCompanyStaff() {
+                return window.location.pathname === '/company/staff';
+            },
+
+            toggleDarkMode() {
+                this.isDarkMode = !this.isDarkMode;
+                localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+                document.documentElement.classList.toggle('dark', this.isDarkMode);
+                this.$nextTick(() => {
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                });
+            },
+
+            async logout() {
+                try {
+                    const refreshToken = localStorage.getItem('refreshToken');
+                    await api.fetchWithToken('/auth/logout', {
+                        method: 'POST',
+                        body: JSON.stringify({ refreshToken })
+                    });
+                } catch (e) { /* ignore */ }
+                api.clearTokens();
+                this.user = null;
+                window.location.href = '/login';
+            }
+        };
+    }
+</script>
+</body>
+</html>

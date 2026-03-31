@@ -95,6 +95,13 @@ const api = {
     });
   },
 
+  async put(endpoint, body) {
+    return this.fetchWithToken(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
   async patch(endpoint, body) {
     return this.fetchWithToken(endpoint, {
       method: "PATCH",

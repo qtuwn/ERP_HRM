@@ -54,6 +54,8 @@ public class JobEntity {
     private String companySize; // e.g., 50-100, 100-500, etc.
 
     // HR Logic
+    @Column(name = "company_id")
+    private UUID companyId;
     private String department;
     private String notificationEmail; // Email to receive notification of applications
     private Integer numberOfPositions; // Number of positions to hire

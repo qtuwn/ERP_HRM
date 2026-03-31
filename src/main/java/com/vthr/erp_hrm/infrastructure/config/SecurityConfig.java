@@ -39,14 +39,15 @@ public class SecurityConfig {
                                 "/jobs", "/jobs/**",
                                 "/dashboard", "/jobs/*/kanban",
                                 "/admin/users",
+                                "/company/staff",
                                 "/candidate/applications", "/profile",
                                 "/css/**", "/js/**", "/images/**", "/error")
                         .permitAll()
-                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR", "COMPANY")
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/applications/*/status")
-                        .hasAnyRole("ADMIN", "HR")
+                        .hasAnyRole("ADMIN", "HR", "COMPANY")
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/applications/bulk-reject")
-                        .hasAnyRole("ADMIN", "HR")
+                        .hasAnyRole("ADMIN", "HR", "COMPANY")
                         .requestMatchers("/api/applications/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

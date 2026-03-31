@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=com.vthr.erp_hrm.infrastructure.config.DotenvEnvironmentPostProcessor
+

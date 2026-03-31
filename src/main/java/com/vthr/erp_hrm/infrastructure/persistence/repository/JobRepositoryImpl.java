@@ -40,6 +40,11 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     @Override
+    public Page<Job> findByCompanyId(UUID companyId, Pageable pageable) {
+        return jobJpaRepository.findByCompanyId(companyId, pageable).map(JobMapper::toDomain);
+    }
+
+    @Override
     public java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt) {
         return jobJpaRepository.findByStatusAndExpiresAtBefore(status, expiresAt)
                 .stream()

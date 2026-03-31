@@ -60,6 +60,31 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> findByCompanyId(UUID companyId) {
+        return jpaRepository.findByCompanyIdAndStatusNot(companyId, AccountStatus.DELETED).stream()
+                .map(userMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<User> findByCompanyId(UUID companyId, Pageable pageable) {
+        return jpaRepository.findByCompanyIdAndStatusNot(companyId, AccountStatus.DELETED, pageable)
+                .map(userMapper::toDomain);
+    }
+
+    @Override
+    public Page<User> findByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable) {
+        return jpaRepository.findByCompanyIdAndRoleAndStatusNot(companyId, role, AccountStatus.DELETED, pageable)
+                .map(userMapper::toDomain);
+    }
+
+    @Override
+    public Page<User> findByCompanyIdAndDepartmentId(UUID companyId, UUID departmentId, Pageable pageable) {
+        return jpaRepository.findByCompanyIdAndDepartmentIdAndStatusNot(companyId, departmentId, AccountStatus.DELETED, pageable)
+                .map(userMapper::toDomain);
+    }
+
+    @Override
     public long countByRole(Role role) {
         return jpaRepository.countByRoleAndStatusNot(role, AccountStatus.DELETED);
     }

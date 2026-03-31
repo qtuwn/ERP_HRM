@@ -14,6 +14,8 @@ public interface JobJpaRepository extends JpaRepository<JobEntity, UUID> {
 
     Page<JobEntity> findByDepartment(String department, Pageable pageable);
 
+    Page<JobEntity> findByCompanyId(UUID companyId, Pageable pageable);
+
     java.util.List<JobEntity> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
 
     long countByStatus(String status);
