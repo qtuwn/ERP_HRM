@@ -3,6 +3,7 @@ package com.vthr.erp_hrm.core.service.impl;
 import com.vthr.erp_hrm.core.model.AuthTokens;
 import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Company;
+import com.vthr.erp_hrm.core.model.EmailVerificationToken;
 import com.vthr.erp_hrm.core.model.RefreshToken;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
@@ -124,6 +125,26 @@ public class AuthServiceImplTest {
     }
 
     @Test
+    void register_shouldRejectDuplicateEmail() {
+        when(userRepository.findByEmail("dup@example.com"))
+                .thenReturn(Optional.of(User.builder().id(UUID.randomUUID()).build()));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                authService.register("dup@example.com", "password", "Name", null, "CANDIDATE", null, null)
+        );
+        assertEquals("Email already exists", ex.getMessage());
+    }
+
+    @Test
+    void verifyEmail_shouldRejectInvalidToken() {
+        when(jwtService.hashToken("bad")).thenReturn("badHash");
+        when(emailVerificationTokenRepository.findByTokenHash("badHash")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.verifyEmail("bad"));
+        assertEquals("Invalid verification token", ex.getMessage());
+    }
+
+    @Test
     void login_shouldRejectWhenEmailNotVerified() {
         User user = User.builder()
                 .id(UUID.randomUUID())
@@ -178,6 +199,25 @@ public class AuthServiceImplTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login("u@example.com", "pass"));
         assertEquals("User is suspended", ex.getMessage());
+    }
+
+    @Test
+    void login_shouldRejectWrongPassword() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.CANDIDATE)
+                .status(AccountStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByEmail("u@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login("u@example.com", "wrong"));
+        assertEquals("Invalid credentials", ex.getMessage());
     }
 
     @Test
@@ -251,6 +291,38 @@ public class AuthServiceImplTest {
         assertEquals("newRaw", res.getRefreshToken());
         assertTrue(existing.isRevoked());
         verify(refreshTokenRepository, atLeast(2)).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void refreshToken_shouldRejectWhenRevoked() {
+        RefreshToken existing = RefreshToken.builder()
+                .userId(UUID.randomUUID())
+                .tokenHash("h")
+                .expiresAt(ZonedDateTime.now().plusMinutes(5))
+                .revoked(true)
+                .build();
+
+        when(jwtService.hashToken("raw")).thenReturn("h");
+        when(refreshTokenRepository.findByTokenHash("h")).thenReturn(Optional.of(existing));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.refreshToken("raw"));
+        assertEquals("Invalid or expired refresh token", ex.getMessage());
+    }
+
+    @Test
+    void refreshToken_shouldRejectWhenExpired() {
+        RefreshToken existing = RefreshToken.builder()
+                .userId(UUID.randomUUID())
+                .tokenHash("h")
+                .expiresAt(ZonedDateTime.now().minusMinutes(1))
+                .revoked(false)
+                .build();
+
+        when(jwtService.hashToken("raw")).thenReturn("h");
+        when(refreshTokenRepository.findByTokenHash("h")).thenReturn(Optional.of(existing));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.refreshToken("raw"));
+        assertEquals("Invalid or expired refresh token", ex.getMessage());
     }
 
     @Test

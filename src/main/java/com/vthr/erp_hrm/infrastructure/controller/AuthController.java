@@ -127,13 +127,13 @@ public class AuthController {
     @PostMapping("/forgot-password/request")
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.requestForgotPasswordOtp(request.getEmail());
-        return ResponseEntity.ok(ApiResponse.success(null, "OTP reset password da duoc gui"));
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP đặt lại mật khẩu đã được gửi"));
     }
 
     @PostMapping("/forgot-password/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmForgotPassword(
             @Valid @RequestBody ResetPasswordWithOtpRequest request) {
         authService.resetPasswordWithOtp(request.getEmail(), request.getOtp(), request.getNewPassword());
-        return ResponseEntity.ok(ApiResponse.success(null, "Reset password thanh cong"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Đặt lại mật khẩu thành công"));
     }
 }

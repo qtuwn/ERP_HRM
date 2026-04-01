@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Briefcase, ClipboardList, LayoutDashboard, Menu, Moon, Sun, Users, X } from 'lucide-react'
+import { Briefcase, ClipboardList, LayoutDashboard, Menu, Moon, Sun, Users, X, Building2, Tags } from 'lucide-react'
 import { clearSession, getUser, normalizeUserRole } from '../lib/storage.js'
 import { applyTheme, getStoredTheme } from '../lib/theme.js'
 import LogoImage from '../assets/LOGO.png'
@@ -75,6 +75,8 @@ export function AdminShell() {
   const navJobsManagement = path.startsWith('/jobs/management')
   const navApplicationTracking = isKanbanPath(path)
   const navAdminUsers = path === '/admin/users'
+  const navAdminCompanies = path === '/admin/companies'
+  const navAdminSkills = path === '/admin/master-data/skills'
   const navCompanyStaff = path === '/company/staff'
 
   return (
@@ -136,10 +138,20 @@ export function AdminShell() {
             </p>
 
             {user && role === 'ADMIN' ? (
-              <NavLink to="/admin/users" className={navItemClass(navAdminUsers)}>
-                <Users className={iconClass(navAdminUsers)} />
-                <span>Quản lý tài khoản</span>
-              </NavLink>
+              <>
+                <NavLink to="/admin/users" className={navItemClass(navAdminUsers)}>
+                  <Users className={iconClass(navAdminUsers)} />
+                  <span>Quản lý tài khoản</span>
+                </NavLink>
+                <NavLink to="/admin/companies" className={navItemClass(navAdminCompanies)}>
+                  <Building2 className={iconClass(navAdminCompanies)} />
+                  <span>Duyệt công ty</span>
+                </NavLink>
+                <NavLink to="/admin/master-data/skills" className={navItemClass(navAdminSkills)}>
+                  <Tags className={iconClass(navAdminSkills)} />
+                  <span>Master data (Skills)</span>
+                </NavLink>
+              </>
             ) : null}
 
             {user && role === 'COMPANY' ? (

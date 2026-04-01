@@ -16,21 +16,21 @@ import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "companies")
+@Table(name = "skills")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CompanyEntity {
+public class SkillEntity {
     @Id
     private UUID id;
 
+    @Column(name = "category_id")
+    private UUID categoryId;
+
     @Column(nullable = false, unique = true)
     private String name;
-
-    @Column(name = "is_verified_by_admin", nullable = false)
-    private boolean isVerifiedByAdmin;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -40,3 +40,4 @@ public class CompanyEntity {
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
 }
+

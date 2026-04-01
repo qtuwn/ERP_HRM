@@ -24,7 +24,15 @@ function statusBadgeClass(status) {
 }
 
 function statusText(status) {
-  return String(status || '').replaceAll('_', ' ')
+  const s = String(status || '')
+  const k = normalizeForStepper(s)
+  if (s === 'REJECTED') return 'Từ chối'
+  if (k === 'APPLIED') return s.startsWith('AI_') ? 'Đã nộp (AI đang xử lý)' : 'Đã nộp'
+  if (k === 'HR_REVIEW') return 'HR duyệt'
+  if (k === 'INTERVIEW') return 'Phỏng vấn'
+  if (k === 'OFFER') return 'Offer'
+  if (k === 'HIRED') return 'Đã nhận'
+  return s.replaceAll('_', ' ')
 }
 
 function normalizeForStepper(status) {

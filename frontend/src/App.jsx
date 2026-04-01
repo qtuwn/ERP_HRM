@@ -30,6 +30,12 @@ const JobsManagementPage = lazy(() =>
 )
 const KanbanPage = lazy(() => import('./pages/KanbanPage.jsx').then((m) => ({ default: m.KanbanPage })))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage.jsx').then((m) => ({ default: m.AdminUsersPage })))
+const AdminCompaniesPage = lazy(() =>
+  import('./pages/AdminCompaniesPage.jsx').then((m) => ({ default: m.AdminCompaniesPage }))
+)
+const AdminSkillDictionaryPage = lazy(() =>
+  import('./pages/AdminSkillDictionaryPage.jsx').then((m) => ({ default: m.AdminSkillDictionaryPage }))
+)
 const CompanyStaffPage = lazy(() =>
   import('./pages/CompanyStaffPage.jsx').then((m) => ({ default: m.CompanyStaffPage }))
 )
@@ -95,6 +101,22 @@ export default function App() {
           element={
             <RequireAuth>
               <RequireRole roles={['ADMIN']}>{withSuspense(<AdminUsersPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/companies"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['ADMIN']}>{withSuspense(<AdminCompaniesPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/master-data/skills"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['ADMIN']}>{withSuspense(<AdminSkillDictionaryPage />)}</RequireRole>
             </RequireAuth>
           }
         />

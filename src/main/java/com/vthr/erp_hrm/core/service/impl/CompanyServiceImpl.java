@@ -44,6 +44,7 @@ public class CompanyServiceImpl implements CompanyService {
                     CompanyEntity newCompany = CompanyEntity.builder()
                             .id(UUID.randomUUID())
                             .name(name)
+                            .isVerifiedByAdmin(false)
                             .build();
                     return CompanyMapper.toDomain(companyRepository.save(newCompany));
                 });
