@@ -1,17 +1,20 @@
 package com.vthr.erp_hrm.infrastructure.controller;
 
 import com.vthr.erp_hrm.core.model.Role;
+import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.service.UserService;
 import com.vthr.erp_hrm.infrastructure.controller.request.UpdateUserRoleRequest;
 import com.vthr.erp_hrm.core.model.AuditLog;
 import com.vthr.erp_hrm.core.service.AuditLogService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.UserResponse;
+import com.vthr.erp_hrm.infrastructure.persistence.repository.CompanyRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,16 +37,30 @@ public class AdminUserController {
 
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final CompanyRepository companyRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
             @RequestParam(required = false) String role,
-            Pageable pageable) {
+            @RequestParam(required = false) UUID companyId,
+            @RequestParam(required = false) UUID departmentId,
+            Pageable pageable,
+            Principal principal) {
         Role normalizedRole = role == null || role.isBlank() ? null : Role.fromString(role);
-        Page<UserResponse> users = (normalizedRole == null
-                ? userService.getAllUsers(pageable)
-                : userService.getUsersByRole(normalizedRole, pageable))
-                .map(UserResponse::fromDomain);
+
+        Page<User> usersDomain = resolveUsersForAdmin(normalizedRole, companyId, departmentId, pageable);
+
+        var companyIds = usersDomain.getContent().stream()
+                .map(User::getCompanyId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        var companyNameMap = companyRepository.findAllById(companyIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity::getId,
+                        com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity::getName
+                ));
+
+        Page<UserResponse> users = usersDomain.map(u -> UserResponse.fromDomain(u, companyNameMap.get(u.getCompanyId())));
         return ResponseEntity.ok(ApiResponse.success(users, "Fetched users successfully"));
     }
 
@@ -54,8 +71,13 @@ public class AdminUserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
-        UserResponse user = UserResponse.fromDomain(userService.getUserById(id));
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id, Principal principal) {
+        User u = userService.getUserById(id);
+        String companyName = null;
+        if (u.getCompanyId() != null) {
+            companyName = companyRepository.findById(u.getCompanyId()).map(com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity::getName).orElse(null);
+        }
+        UserResponse user = UserResponse.fromDomain(u, companyName);
         return ResponseEntity.ok(ApiResponse.success(user, "Fetched user successfully"));
     }
 
@@ -105,7 +127,6 @@ public class AdminUserController {
             @PathVariable UUID id,
             @Valid @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.UpdateUserDepartmentRequest request,
             Principal principal) {
-        
         UserResponse user = UserResponse.fromDomain(userService.updateDepartment(id, request.getDepartment()));
 
         UUID currentUserId = UUID.fromString(principal.getName());
@@ -166,5 +187,25 @@ public class AdminUserController {
         if (currentUserId.equals(targetUserId)) {
             throw new RuntimeException(message);
         }
+    }
+
+    private Page<User> resolveUsersForAdmin(Role role, UUID companyId, UUID departmentId, Pageable pageable) {
+        if (companyId != null && departmentId != null && role != null) {
+            // Không có method combo 3 điều kiện trong service hiện tại => chặn để tránh trả sai dữ liệu.
+            throw new AccessDeniedException("Unsupported filter combination. Use companyId+departmentId or companyId+role or role only.");
+        }
+        if (companyId != null && departmentId != null) {
+            return userService.getUsersByCompanyIdAndDepartmentId(companyId, departmentId, pageable);
+        }
+        if (companyId != null && role != null) {
+            return userService.getUsersByCompanyIdAndRole(companyId, role, pageable);
+        }
+        if (companyId != null) {
+            return userService.getUsersByCompanyId(companyId, pageable);
+        }
+        if (role != null) {
+            return userService.getUsersByRole(role, pageable);
+        }
+        return userService.getAllUsers(pageable);
     }
 }

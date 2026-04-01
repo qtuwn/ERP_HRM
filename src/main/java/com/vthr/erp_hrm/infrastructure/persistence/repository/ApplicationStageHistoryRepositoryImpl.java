@@ -24,6 +24,13 @@ public class ApplicationStageHistoryRepositoryImpl implements ApplicationStageHi
     }
 
     @Override
+    public List<ApplicationStageHistory> findByApplicationIdOrderByCreatedAtAsc(UUID applicationId) {
+        return jpaRepository.findByApplicationIdOrderByCreatedAtAsc(applicationId).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public ApplicationStageHistory save(ApplicationStageHistory history) {
         ApplicationStageHistoryEntity entity = toEntity(history);
         return toDomain(jpaRepository.save(entity));

@@ -3,6 +3,7 @@ package com.vthr.erp_hrm.infrastructure.controller;
 import com.vthr.erp_hrm.core.model.AuthTokens;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.service.AuthService;
+import com.vthr.erp_hrm.infrastructure.persistence.repository.CompanyRepository;
 import com.vthr.erp_hrm.infrastructure.controller.request.ChangePasswordRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.ForgotPasswordRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.LoginRequest;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final CompanyRepository companyRepository;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
@@ -46,10 +48,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthTokens tokens = authService.login(request.getEmail(), request.getPassword());
+        String companyName = resolveCompanyName(tokens.getUser());
         LoginResponse data = LoginResponse.builder()
                 .accessToken(tokens.getAccessToken())
                 .refreshToken(tokens.getRefreshToken())
-                .user(UserResponse.fromDomain(tokens.getUser()))
+                .user(UserResponse.fromDomain(tokens.getUser(), companyName))
                 .build();
         return ResponseEntity.ok(ApiResponse.success(data, "Login successful"));
     }
@@ -57,12 +60,20 @@ public class AuthController {
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         AuthTokens tokens = authService.refreshToken(request.getRefreshToken());
+        String companyName = resolveCompanyName(tokens.getUser());
         LoginResponse data = LoginResponse.builder()
                 .accessToken(tokens.getAccessToken())
                 .refreshToken(tokens.getRefreshToken())
-                .user(UserResponse.fromDomain(tokens.getUser()))
+                .user(UserResponse.fromDomain(tokens.getUser(), companyName))
                 .build();
         return ResponseEntity.ok(ApiResponse.success(data, "Token refreshed successfully"));
+    }
+
+    private String resolveCompanyName(User user) {
+        if (user == null || user.getCompanyId() == null) return null;
+        return companyRepository.findById(user.getCompanyId())
+                .map(com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity::getName)
+                .orElse(null);
     }
 
     @PostMapping("/logout")
@@ -94,10 +105,23 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
     }
 
+    // Alias for Facebook-like flow naming
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyEmailOtpRequest request) {
+        authService.verifyEmailOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP verified successfully"));
+    }
+
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiResponse<Void>> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         authService.resendVerification(request.getEmail());
         return ResponseEntity.ok(ApiResponse.success(null, "Verification email sent"));
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerificationOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP resent"));
     }
 
     @PostMapping("/forgot-password/request")

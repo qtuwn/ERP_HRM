@@ -22,6 +22,14 @@ public interface UserRepository {
 
     Page<User> findByRole(Role role, Pageable pageable);
 
+    List<User> findByCompanyId(UUID companyId);
+
+    Page<User> findByCompanyId(UUID companyId, Pageable pageable);
+
+    Page<User> findByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable);
+
+    Page<User> findByCompanyIdAndDepartmentId(UUID companyId, UUID departmentId, Pageable pageable);
+
     long countByRole(Role role);
 
     User save(User user);

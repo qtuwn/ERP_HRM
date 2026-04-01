@@ -25,4 +25,12 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     List<UserEntity> findByStatusNot(AccountStatus status);
 
     Page<UserEntity> findByStatusNot(AccountStatus status, Pageable pageable);
+
+    List<UserEntity> findByCompanyIdAndStatusNot(UUID companyId, AccountStatus status);
+
+    Page<UserEntity> findByCompanyIdAndStatusNot(UUID companyId, AccountStatus status, Pageable pageable);
+
+    Page<UserEntity> findByCompanyIdAndRoleAndStatusNot(UUID companyId, Role role, AccountStatus status, Pageable pageable);
+
+    Page<UserEntity> findByCompanyIdAndDepartmentIdAndStatusNot(UUID companyId, UUID departmentId, AccountStatus status, Pageable pageable);
 }

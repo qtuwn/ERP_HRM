@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vthr.erp_hrm.core.model.EmailStatus;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.EmailLogEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.repository.EmailLogRepository;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -29,6 +31,12 @@ public class EmailWorker {
 
     private static final String EMAIL_QUEUE = "email_notifications";
 
+    @Value("${app.mail.from:noreply@vthr.com}")
+    private String fromEmail;
+
+    @Value("${app.mail.from-name:VTHR Solutions}")
+    private String fromName;
+
     @Scheduled(fixedDelay = 5000)
     public void processEmailQueue() {
         try {
@@ -47,11 +55,15 @@ public class EmailWorker {
 
                     MimeMessage message = javaMailSender.createMimeMessage();
                     MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+                    helper.setFrom(fromEmail, fromName);
                     helper.setTo(payload.getRecipient());
                     helper.setSubject(payload.getSubject());
                     helper.setText(htmlBody, true); // true = isHtml
 
+                    log.info("About to send email via SMTP: to='{}' subject='{}' template='{}'",
+                            payload.getRecipient(), payload.getSubject(), payload.getTemplateName());
                     javaMailSender.send(message);
+                    log.info("MailSender.send completed: to='{}' subject='{}'", payload.getRecipient(), payload.getSubject());
 
                     if (logEntity != null) {
                         logEntity.setStatus(EmailStatus.SENT);
@@ -60,14 +72,23 @@ public class EmailWorker {
                     }
                     log.info("Successfully dispatched email: {}", payload.getSubject());
 
-                } catch (Exception e) {
-                    log.error("Failed to transmit email template natively: {}", e.getMessage(), e);
+                } catch (MessagingException e) {
+                    log.error("MessagingException while sending email (full stacktrace). to='{}' subject='{}'",
+                            payload.getRecipient(), payload.getSubject(), e);
                     if (logEntity != null) {
                         logEntity.setStatus(EmailStatus.FAILED);
                         logEntity.setErrorMessage(e.getMessage());
                         emailLogRepository.save(logEntity);
                     }
                     // Optionally push back to queue or a Dead Letter Queue... keeping it simple for now.
+                } catch (Exception e) {
+                    log.error("Unexpected exception while sending email (full stacktrace). to='{}' subject='{}'",
+                            payload.getRecipient(), payload.getSubject(), e);
+                    if (logEntity != null) {
+                        logEntity.setStatus(EmailStatus.FAILED);
+                        logEntity.setErrorMessage(e.getMessage());
+                        emailLogRepository.save(logEntity);
+                    }
                 }
             }
         } catch (Exception e) {

@@ -27,7 +27,10 @@ import java.util.Locale;
 import java.util.UUID;
 import java.security.SecureRandom;
 import java.time.ZonedDateTime;
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
@@ -49,11 +52,17 @@ public class AuthServiceImpl implements AuthService {
     @Value("${auth.email-verification-expiration-hours:24}")
     private long emailVerificationExpirationHours;
 
-    @Value("${auth.otp-expiration-minutes:10}")
+    @Value("${auth.otp-expiration-minutes:5}")
     private long otpExpirationMinutes;
+
+    @Value("${auth.otp-resend-cooldown-seconds:60}")
+    private long otpResendCooldownSeconds;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String appBaseUrl;
+
+    @Value("${auth.email-verification-demo-log-only:false}")
+    private boolean emailVerificationDemoLogOnly;
 
     @Override
     public AuthTokens login(String email, String password) {
@@ -80,7 +89,11 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("User is disabled");
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getId().toString(), user.getRole());
+        String accessToken = jwtService.generateAccessToken(
+                user.getId().toString(),
+                user.getRole(),
+                user.getCompanyId() != null ? user.getCompanyId().toString() : null
+        );
         String refreshTokenStr = jwtService.generateRefreshToken();
         String tokenHash = jwtService.hashToken(refreshTokenStr);
 
@@ -116,7 +129,11 @@ public class AuthServiceImpl implements AuthService {
         refreshToken.setRevoked(true);
         refreshTokenRepository.save(refreshToken);
 
-        String newAccessToken = jwtService.generateAccessToken(user.getId().toString(), user.getRole());
+        String newAccessToken = jwtService.generateAccessToken(
+                user.getId().toString(),
+                user.getRole(),
+                user.getCompanyId() != null ? user.getCompanyId().toString() : null
+        );
         String newRefreshTokenStr = jwtService.generateRefreshToken();
         String newTokenHash = jwtService.hashToken(newRefreshTokenStr);
 
@@ -158,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
         Role role = resolveRole(accountType);
 
         UUID companyId = null;
-        if (role == Role.HR || role == Role.HR_MANAGER) {
+        if (role == Role.HR || role == Role.COMPANY) {
             if (companyName == null || companyName.isBlank()) {
                 throw new RuntimeException("Company name is required for HR registration");
             }
@@ -187,7 +204,8 @@ public class AuthServiceImpl implements AuthService {
             companyService.addHrMember(companyId, saved.getId(), role.name());
         }
 
-        createVerificationOtpAndSendEmail(saved);
+        // UI hiện tại dùng OTP verify email (/verify-otp). Tạo OTP thật thay vì chỉ magic-link.
+        createEmailVerificationOtpAndDispatch(saved);
         return saved;
     }
 
@@ -235,7 +253,25 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        createVerificationOtpAndSendEmail(user);
+        enforceOtpResendCooldown(user.getId());
+        createEmailVerificationAndDispatch(user);
+    }
+
+    @Override
+    public void resendVerificationOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getStatus() == AccountStatus.DELETED) {
+            throw new RuntimeException("User no longer available");
+        }
+
+        if (user.isEmailVerified() && user.getStatus() == AccountStatus.ACTIVE) {
+            return;
+        }
+
+        enforceOtpResendCooldown(user.getId());
+        createEmailVerificationOtpAndDispatch(user);
     }
 
     @Override
@@ -265,8 +301,8 @@ public class AuthServiceImpl implements AuthService {
         user.setActive(true);
         userRepository.save(user);
 
-        verificationToken.setUsedAt(ZonedDateTime.now());
-        emailVerificationTokenRepository.save(verificationToken);
+        // OTP one-time use: delete token after successful verification
+        emailVerificationTokenRepository.deleteById(verificationToken.getId());
     }
 
     @Override
@@ -343,7 +379,45 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    private void createVerificationOtpAndSendEmail(User user) {
+    private void createEmailVerificationAndDispatch(User user) {
+        ZonedDateTime now = ZonedDateTime.now();
+        for (EmailVerificationToken token : emailVerificationTokenRepository.findActiveByUserId(user.getId())) {
+            token.setUsedAt(now);
+            emailVerificationTokenRepository.save(token);
+        }
+
+        // Magic-link token: demo nhanh hơn OTP vì chỉ cần click link.
+        // Token raw chỉ được log/send; DB chỉ lưu hash.
+        String rawToken = UUID.randomUUID().toString().replace("-", "");
+        String tokenHash = jwtService.hashToken(rawToken);
+
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .userId(user.getId())
+                .tokenHash(tokenHash)
+                .expiresAt(now.plus(emailVerificationExpirationHours, ChronoUnit.HOURS))
+                .build();
+        emailVerificationTokenRepository.save(verificationToken);
+
+        String encoded = URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        String verifyUrl = appBaseUrl + "/api/auth/verify-email?token=" + encoded;
+
+        if (emailVerificationDemoLogOnly) {
+            // Demo mode: không gửi email, chỉ log link để copy/paste
+            System.out.println("[DEMO][EMAIL_VERIFY_LINK] " + verifyUrl);
+            return;
+        }
+
+        emailQueueService.enqueueEmail(
+                user.getEmail(),
+                "Xac thuc email tai khoan VTHR",
+                "verify_email_link",
+                Map.of(
+                        "fullName", user.getFullName(),
+                        "verifyUrl", verifyUrl,
+                        "hours", emailVerificationExpirationHours));
+    }
+
+    private void createEmailVerificationOtpAndDispatch(User user) {
         ZonedDateTime now = ZonedDateTime.now();
         for (EmailVerificationToken token : emailVerificationTokenRepository.findActiveByUserId(user.getId())) {
             token.setUsedAt(now);
@@ -360,6 +434,11 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         emailVerificationTokenRepository.save(verificationToken);
 
+        if (emailVerificationDemoLogOnly) {
+            System.out.println("[DEMO][EMAIL_VERIFY_OTP] " + user.getEmail() + " -> " + otp);
+            return;
+        }
+
         emailQueueService.enqueueEmail(
                 user.getEmail(),
                 "OTP xac thuc email tai khoan VTHR",
@@ -368,6 +447,20 @@ public class AuthServiceImpl implements AuthService {
                         "fullName", user.getFullName(),
                         "otp", otp,
                         "minutes", otpExpirationMinutes));
+    }
+
+    private void enforceOtpResendCooldown(UUID userId) {
+        ZonedDateTime now = ZonedDateTime.now();
+        emailVerificationTokenRepository.findLatestByUserId(userId).ifPresent(latest -> {
+            if (latest.getCreatedAt() == null) {
+                return;
+            }
+            long seconds = Duration.between(latest.getCreatedAt(), now).getSeconds();
+            if (seconds < otpResendCooldownSeconds) {
+                long wait = otpResendCooldownSeconds - seconds;
+                throw new RuntimeException("Vui long cho " + wait + " giay truoc khi gui lai OTP");
+            }
+        });
     }
 
     private String generateOtp() {
@@ -382,6 +475,9 @@ public class AuthServiceImpl implements AuthService {
         String normalized = accountType.trim().toUpperCase(Locale.ROOT);
         if ("HR".equals(normalized)) {
             return Role.HR;
+        }
+        if ("COMPANY".equals(normalized) || "HR_MANAGER".equals(normalized)) {
+            return Role.COMPANY;
         }
         return Role.CANDIDATE;
     }

@@ -6,6 +6,7 @@ import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.repository.ApplicationRepository;
 import com.vthr.erp_hrm.core.repository.MessageRepository;
 import com.vthr.erp_hrm.core.service.ChatService;
+import com.vthr.erp_hrm.core.service.ChatRateLimitService;
 import com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,24 +25,31 @@ public class ChatServiceImpl implements ChatService {
 
     private final MessageRepository messageRepository;
     private final ApplicationRepository applicationRepository;
+    private final com.vthr.erp_hrm.core.service.ApplicationAccessService applicationAccessService;
     private final RealtimeEventService realtimeEventService;
     private final EmailQueueService emailQueueService;
     private final UserRepository userRepository;
+    private final ChatRateLimitService chatRateLimitService;
 
     @Override
     public Message sendMessage(UUID applicationId, UUID senderId, Role senderRole, String content) {
+        applicationAccessService.requireParticipantForMessaging(senderId, senderRole, applicationId);
+        chatRateLimitService.assertCanSendMessage(applicationId, senderId);
+        String normalized = content == null ? "" : content.trim();
+        if (normalized.isBlank()) {
+            throw new RuntimeException("Content cannot be empty");
+        }
+        if (normalized.length() > 2000) {
+            throw new RuntimeException("Message too long");
+        }
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
-
-        if (senderRole == Role.CANDIDATE && !application.getCandidateId().equals(senderId)) {
-            throw new RuntimeException("Unauthorized: Cannot send messages to other candidates' applications");
-        }
 
         Message message = Message.builder()
                 .applicationId(applicationId)
                 .senderId(senderId)
                 .senderRole(senderRole)
-                .content(content)
+                .content(normalized)
                 .createdAt(ZonedDateTime.now())
                 .build();
 
@@ -70,16 +78,19 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public Page<Message> getMessageHistory(UUID applicationId, Pageable pageable) {
+    public Page<Message> getMessageHistory(UUID applicationId, UUID viewerId, Role viewerRole, Pageable pageable) {
+        applicationAccessService.requireParticipantForMessaging(viewerId, viewerRole, applicationId);
         return messageRepository.findByApplicationIdOrderByCreatedAtAsc(applicationId, pageable);
     }
 
     @Override
     public void indicateTyping(UUID applicationId, UUID senderId, Role senderRole) {
-        Application application = applicationRepository.findById(applicationId)
-                .orElse(null);
-
-        if (application == null || (senderRole == Role.CANDIDATE && !application.getCandidateId().equals(senderId))) {
+        try {
+            applicationAccessService.requireParticipantForMessaging(senderId, senderRole, applicationId);
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (!chatRateLimitService.shouldAllowTyping(applicationId, senderId)) {
             return;
         }
 

@@ -28,17 +28,23 @@ public class JwtServiceImpl implements JwtService {
     }
 
     @Override
-    public String generateAccessToken(String subject, Role role) {
+    public String generateAccessToken(String subject, Role role, String companyId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTimeMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(subject)
                 .claim("role", role.name())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)
-                .compact();
+                ;
+
+        if (companyId != null && !companyId.isBlank()) {
+            builder = builder.claim("companyId", companyId);
+        }
+
+        return builder.compact();
     }
 
     @Override

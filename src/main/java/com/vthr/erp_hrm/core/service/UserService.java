@@ -21,6 +21,12 @@ public interface UserService {
 
     Page<User> getUsersByRole(Role role, Pageable pageable);
 
+    Page<User> getUsersByCompanyId(UUID companyId, Pageable pageable);
+
+    Page<User> getUsersByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable);
+
+    Page<User> getUsersByCompanyIdAndDepartmentId(UUID companyId, UUID departmentId, Pageable pageable);
+
     long countUsersByRole(Role role);
 
     User updateUserRole(UUID userId, Role role);

@@ -53,6 +53,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Page<User> getUsersByCompanyId(UUID companyId, Pageable pageable) {
+        return userRepository.findByCompanyId(companyId, pageable);
+    }
+
+    @Override
+    public Page<User> getUsersByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable) {
+        return userRepository.findByCompanyIdAndRole(companyId, role, pageable);
+    }
+
+    @Override
+    public Page<User> getUsersByCompanyIdAndDepartmentId(UUID companyId, UUID departmentId, Pageable pageable) {
+        return userRepository.findByCompanyIdAndDepartmentId(companyId, departmentId, pageable);
+    }
+
+    @Override
     public long countUsersByRole(Role role) {
         return userRepository.countByRole(role);
     }

@@ -22,6 +22,7 @@ public class User {
     private boolean mustChangePassword;
     private String fullName;
     private UUID companyId;
+    private UUID departmentId;
     private String department;
     private String phone;
     private boolean emailVerified;

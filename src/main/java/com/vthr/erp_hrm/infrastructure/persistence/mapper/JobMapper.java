@@ -29,6 +29,7 @@ public class JobMapper {
                 .address(entity.getAddress())
                 .city(entity.getCity())
                 .companySize(entity.getCompanySize())
+                .companyId(entity.getCompanyId())
                 .department(entity.getDepartment())
                 .notificationEmail(entity.getNotificationEmail())
                 .numberOfPositions(entity.getNumberOfPositions())
@@ -64,6 +65,7 @@ public class JobMapper {
         entity.setAddress(domain.getAddress());
         entity.setCity(domain.getCity());
         entity.setCompanySize(domain.getCompanySize());
+        entity.setCompanyId(domain.getCompanyId());
         entity.setDepartment(domain.getDepartment());
         entity.setNotificationEmail(domain.getNotificationEmail());
         entity.setNumberOfPositions(domain.getNumberOfPositions());

@@ -21,6 +21,8 @@ public interface AuthService {
 
     void resendVerification(String email);
 
+    void resendVerificationOtp(String email);
+
     void requestForgotPasswordOtp(String email);
 
     void resetPasswordWithOtp(String email, String otp, String newPassword);

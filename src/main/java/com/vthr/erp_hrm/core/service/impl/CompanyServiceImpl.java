@@ -1,7 +1,13 @@
 package com.vthr.erp_hrm.core.service.impl;
 
+import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Company;
 import com.vthr.erp_hrm.core.model.CompanyMember;
+import com.vthr.erp_hrm.core.model.Department;
+import com.vthr.erp_hrm.core.model.Role;
+import com.vthr.erp_hrm.core.model.User;
+import com.vthr.erp_hrm.core.repository.DepartmentRepository;
+import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.core.service.CompanyService;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyMemberEntity;
@@ -10,6 +16,7 @@ import com.vthr.erp_hrm.infrastructure.persistence.mapper.CompanyMemberMapper;
 import com.vthr.erp_hrm.infrastructure.persistence.repository.CompanyMemberRepository;
 import com.vthr.erp_hrm.infrastructure.persistence.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +31,9 @@ public class CompanyServiceImpl implements CompanyService {
 
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
+    private final DepartmentRepository departmentRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -94,5 +104,81 @@ public class CompanyServiceImpl implements CompanyService {
             throw new RuntimeException("Member does not belong to this company");
         }
         companyMemberRepository.delete(member);
+    }
+
+    @Override
+    public List<Department> getDepartments(UUID companyId) {
+        return departmentRepository.findByCompanyId(companyId);
+    }
+
+    @Override
+    @Transactional
+    public Department createDepartment(UUID companyId, String name) {
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found"));
+
+        if (departmentRepository.findByCompanyIdAndName(companyId, name).isPresent()) {
+            throw new RuntimeException("Department '" + name + "' already exists in this company");
+        }
+
+        Department dept = Department.builder()
+                .companyId(companyId)
+                .name(name.trim())
+                .build();
+        return departmentRepository.save(dept);
+    }
+
+    @Override
+    public Department getDepartmentById(UUID departmentId) {
+        return departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new RuntimeException("Department not found"));
+    }
+
+    @Override
+    @Transactional
+    public void deleteDepartment(UUID departmentId) {
+        departmentRepository.deleteById(departmentId);
+    }
+
+    @Override
+    @Transactional
+    public User createHrAccount(UUID companyId, String email, String password, String fullName, UUID departmentId) {
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found"));
+
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        String departmentName = null;
+        if (departmentId != null) {
+            Department dept = departmentRepository.findById(departmentId)
+                    .orElseThrow(() -> new RuntimeException("Department not found"));
+            if (!dept.getCompanyId().equals(companyId)) {
+                throw new RuntimeException("Department does not belong to this company");
+            }
+            departmentName = dept.getName();
+        }
+
+        User hrUser = User.builder()
+                .email(email)
+                .passwordHash(passwordEncoder.encode(password))
+                .role(Role.HR)
+                .isActive(true)
+                .status(AccountStatus.ACTIVE)
+                .emailVerified(true)
+                .verifiedAt(ZonedDateTime.now())
+                .mustChangePassword(true)
+                .fullName(fullName)
+                .companyId(companyId)
+                .departmentId(departmentId)
+                .department(departmentName)
+                .build();
+
+        User saved = userRepository.save(hrUser);
+
+        addHrMember(companyId, saved.getId(), Role.HR.name());
+
+        return saved;
     }
 }

@@ -1,6 +1,8 @@
-﻿# ERP_HRM Coding Rules
+# ERP_HRM Coding Rules
 
 Version: 3.1
+
+**Kế hoạch triển khai & manual test:** [docs/MASTER_PLAN_IMPLEMENTATION_QA.md](docs/MASTER_PLAN_IMPLEMENTATION_QA.md)
 
 ## 0. Prime Directive
 

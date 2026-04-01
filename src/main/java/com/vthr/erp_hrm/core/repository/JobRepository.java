@@ -15,7 +15,12 @@ public interface JobRepository {
 
     Page<Job> findByStatus(JobStatus status, Pageable pageable);
 
+    /** Từ khóa null hoặc rỗng → chỉ lọc theo status OPEN (qua findByStatus). */
+    Page<Job> findOpenJobsWithOptionalKeyword(String keyword, Pageable pageable);
+
     Page<Job> findByDepartment(String department, Pageable pageable);
+
+    Page<Job> findByCompanyId(java.util.UUID companyId, Pageable pageable);
 
     java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
 

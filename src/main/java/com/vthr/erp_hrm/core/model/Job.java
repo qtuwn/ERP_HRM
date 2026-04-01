@@ -42,6 +42,7 @@ public class Job {
     private String companySize;
 
     // HR Logic
+    private UUID companyId;
     private String department;
     private String notificationEmail;
     private Integer numberOfPositions;

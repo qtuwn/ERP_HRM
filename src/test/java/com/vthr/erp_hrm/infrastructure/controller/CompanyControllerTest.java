@@ -47,7 +47,7 @@ public class CompanyControllerTest {
 
         User hrManager = User.builder()
                 .id(hrManagerId)
-                .role(Role.HR_MANAGER)
+                .role(Role.COMPANY)
                 .companyId(companyId)
                 .status(AccountStatus.ACTIVE)
                 .build();
@@ -77,7 +77,7 @@ public class CompanyControllerTest {
 
         User hrManager = User.builder()
                 .id(hrManagerId)
-                .role(Role.HR_MANAGER)
+                .role(Role.COMPANY)
                 .companyId(managerCompanyId)
                 .status(AccountStatus.ACTIVE)
                 .build();

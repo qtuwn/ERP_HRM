@@ -25,12 +25,19 @@ public class GeminiClient {
     }
 
     public String analyzeCv(String jobDescription, String requiredSkills, String cvText) {
-        String prompt = "You are an expert ATS (Applicant Tracking System) AI assistant. Evaluate the candidate's CV against the Job Description.\n" +
-                "Job Description: " + jobDescription + "\n" +
-                "Required Skills: " + requiredSkills + "\n" +
-                "CV Text: " + cvText + "\n\n" +
-                "Respond ONLY with a raw JSON object and nothing else. No markdown, no code blocks.\n" +
-                "Schema: {\"score\": number 0-100, \"matchedSkills\": string, \"missingSkills\": string, \"summary\": string, \"discrepancy\": string}";
+        String prompt =
+                "Bạn là một chuyên gia tuyển dụng (ATS). Hãy phân tích CV dựa trên Job Description (JD) sau.\n" +
+                "Yêu cầu: so sánh kỹ năng, kinh nghiệm; chấm điểm mức phù hợp.\n\n" +
+                "JD_TEXT:\n" + (jobDescription == null ? "" : jobDescription) + "\n\n" +
+                "REQUIRED_SKILLS (comma-separated):\n" + (requiredSkills == null ? "" : requiredSkills) + "\n\n" +
+                "CV_TEXT:\n" + (cvText == null ? "" : cvText) + "\n\n" +
+                "QUY TẮC TRẢ LỜI:\n" +
+                "- CHỈ trả về JSON thuần (không markdown, không code block).\n" +
+                "- matchedSkills và missingSkills phải là mảng string.\n" +
+                "- score là số nguyên 0-100.\n" +
+                "- suitability chỉ nhận một trong: HIGH | MEDIUM | LOW.\n" +
+                "JSON schema:\n" +
+                "{\"score\":0,\"matchedSkills\":[],\"missingSkills\":[],\"summary\":\"\",\"suitability\":\"HIGH\"}";
 
         try {
             Map<String, Object> requestBody = Map.of(

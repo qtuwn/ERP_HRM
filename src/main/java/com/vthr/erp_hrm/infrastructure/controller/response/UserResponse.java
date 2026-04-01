@@ -19,12 +19,18 @@ public class UserResponse {
     private boolean isActive;
     private String fullName;
     private UUID companyId;
+    private String companyName;
+    private UUID departmentId;
     private String department;
     private String phone;
     private boolean emailVerified;
     private ZonedDateTime createdAt;
 
     public static UserResponse fromDomain(User user) {
+        return fromDomain(user, null);
+    }
+
+    public static UserResponse fromDomain(User user, String companyName) {
         if (user == null)
             return null;
         return UserResponse.builder()
@@ -35,6 +41,8 @@ public class UserResponse {
                 .isActive(user.isActive())
                 .fullName(user.getFullName())
                 .companyId(user.getCompanyId())
+                .companyName(companyName)
+                .departmentId(user.getDepartmentId())
                 .department(user.getDepartment())
                 .phone(user.getPhone())
                 .emailVerified(user.isEmailVerified())

@@ -1,7 +1,9 @@
 package com.vthr.erp_hrm.core.service.impl;
 
+import com.vthr.erp_hrm.core.model.AuthTokens;
 import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Company;
+import com.vthr.erp_hrm.core.model.RefreshToken;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.repository.EmailVerificationTokenRepository;
@@ -20,11 +22,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,6 +64,7 @@ public class AuthServiceImplTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(authService, "otpExpirationMinutes", 10L);
+        ReflectionTestUtils.setField(authService, "refreshExpirationMs", 60000L);
     }
 
     @Test
@@ -116,5 +121,153 @@ public class AuthServiceImplTest {
         });
 
         assertEquals("Company name is required for HR registration", exception.getMessage());
+    }
+
+    @Test
+    void login_shouldRejectWhenEmailNotVerified() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.CANDIDATE)
+                .status(AccountStatus.PENDING)
+                .isActive(true)
+                .emailVerified(false)
+                .build();
+
+        when(userRepository.findByEmail("u@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login("u@example.com", "pass"));
+        assertEquals("Email is not verified", ex.getMessage());
+    }
+
+    @Test
+    void login_shouldRejectWhenDisabled() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.CANDIDATE)
+                .status(AccountStatus.ACTIVE)
+                .isActive(false)
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByEmail("u@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login("u@example.com", "pass"));
+        assertEquals("User is disabled", ex.getMessage());
+    }
+
+    @Test
+    void login_shouldRejectWhenSuspended() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.CANDIDATE)
+                .status(AccountStatus.SUSPENDED)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByEmail("u@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login("u@example.com", "pass"));
+        assertEquals("User is suspended", ex.getMessage());
+    }
+
+    @Test
+    void login_success_shouldIssueAndPersistRefreshToken() {
+        UUID userId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.HR)
+                .companyId(companyId)
+                .status(AccountStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByEmail("u@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+        when(jwtService.generateAccessToken(userId.toString(), Role.HR, companyId.toString())).thenReturn("access");
+        when(jwtService.generateRefreshToken()).thenReturn("refreshRaw");
+        when(jwtService.hashToken("refreshRaw")).thenReturn("refreshHash");
+
+        AuthTokens tokens = authService.login("u@example.com", "pass");
+
+        assertEquals("access", tokens.getAccessToken());
+        assertEquals("refreshRaw", tokens.getRefreshToken());
+        assertEquals(userId, tokens.getUser().getId());
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void refreshToken_shouldRejectInvalid() {
+        when(jwtService.hashToken("bad")).thenReturn("badHash");
+        when(refreshTokenRepository.findByTokenHash("badHash")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.refreshToken("bad"));
+        assertEquals("Invalid refresh token", ex.getMessage());
+    }
+
+    @Test
+    void refreshToken_shouldRotateAndRevokeOld() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .email("u@example.com")
+                .passwordHash("hash")
+                .role(Role.CANDIDATE)
+                .status(AccountStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+
+        RefreshToken existing = RefreshToken.builder()
+                .userId(userId)
+                .tokenHash("oldHash")
+                .expiresAt(ZonedDateTime.now().plusMinutes(5))
+                .revoked(false)
+                .build();
+
+        when(jwtService.hashToken("oldRaw")).thenReturn("oldHash");
+        when(refreshTokenRepository.findByTokenHash("oldHash")).thenReturn(Optional.of(existing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(jwtService.generateAccessToken(userId.toString(), Role.CANDIDATE, null)).thenReturn("newAccess");
+        when(jwtService.generateRefreshToken()).thenReturn("newRaw");
+        when(jwtService.hashToken("newRaw")).thenReturn("newHash");
+
+        AuthTokens res = authService.refreshToken("oldRaw");
+
+        assertEquals("newAccess", res.getAccessToken());
+        assertEquals("newRaw", res.getRefreshToken());
+        assertTrue(existing.isRevoked());
+        verify(refreshTokenRepository, atLeast(2)).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void logout_shouldRevokeIfExists() {
+        RefreshToken token = RefreshToken.builder()
+                .userId(UUID.randomUUID())
+                .tokenHash("h")
+                .expiresAt(ZonedDateTime.now().plusMinutes(5))
+                .revoked(false)
+                .build();
+
+        when(jwtService.hashToken("raw")).thenReturn("h");
+        when(refreshTokenRepository.findByTokenHash("h")).thenReturn(Optional.of(token));
+
+        authService.logout("raw");
+
+        assertTrue(token.isRevoked());
+        verify(refreshTokenRepository).save(token);
     }
 }

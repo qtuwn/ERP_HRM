@@ -35,8 +35,22 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     @Override
+    public Page<Job> findOpenJobsWithOptionalKeyword(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            return findByStatus(JobStatus.OPEN, pageable);
+        }
+        String q = keyword.trim();
+        return jobJpaRepository.findByStatusAndKeyword(JobStatus.OPEN.name(), q, pageable).map(JobMapper::toDomain);
+    }
+
+    @Override
     public Page<Job> findByDepartment(String department, Pageable pageable) {
         return jobJpaRepository.findByDepartment(department, pageable).map(JobMapper::toDomain);
+    }
+
+    @Override
+    public Page<Job> findByCompanyId(UUID companyId, Pageable pageable) {
+        return jobJpaRepository.findByCompanyId(companyId, pageable).map(JobMapper::toDomain);
     }
 
     @Override

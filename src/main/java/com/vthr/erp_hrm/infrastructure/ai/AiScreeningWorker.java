@@ -34,8 +34,14 @@ public class AiScreeningWorker {
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
 
+    @Value("${app.ai.screening.enabled:false}")
+    private boolean aiScreeningEnabled;
+
     @Scheduled(fixedDelay = 5000)
     public void processQueue() {
+        if (!aiScreeningEnabled) {
+            return;
+        }
         String applicationIdStr = queueService.popApplication();
         if (applicationIdStr == null) return;
 
@@ -46,7 +52,7 @@ public class AiScreeningWorker {
         if (application == null) return;
 
         try {
-            application.setAiStatus("PROCESSING");
+            application.setAiStatus("AI_PROCESSING");
             applicationRepository.save(application);
 
             Job job = jobRepository.findById(application.getJobId()).orElse(null);
@@ -73,25 +79,38 @@ public class AiScreeningWorker {
 
             JsonNode node = objectMapper.readTree(jsonResponse);
             
+            String matchedSkills;
+            if (node.path("matchedSkills").isArray()) {
+                matchedSkills = node.path("matchedSkills").toString();
+            } else {
+                matchedSkills = node.path("matchedSkills").asText("");
+            }
+            String missingSkills;
+            if (node.path("missingSkills").isArray()) {
+                missingSkills = node.path("missingSkills").toString();
+            } else {
+                missingSkills = node.path("missingSkills").asText("");
+            }
+
             AIEvaluation eval = AIEvaluation.builder()
                     .applicationId(applicationId)
                     .score(node.path("score").asInt(0))
-                    .matchedSkills(node.path("matchedSkills").asText(""))
-                    .missingSkills(node.path("missingSkills").asText(""))
+                    .matchedSkills(matchedSkills)
+                    .missingSkills(missingSkills)
                     .summary(node.path("summary").asText(""))
-                    .discrepancy(node.path("discrepancy").asText(""))
+                    .discrepancy(node.path("suitability").asText(node.path("discrepancy").asText("")))
                     .build();
 
             evaluationRepository.save(eval);
 
-            application.setAiStatus("DONE");
+            application.setAiStatus("AI_DONE");
             applicationRepository.save(application);
 
             log.info("AI screening completed for application: {}. Score: {}", applicationId, eval.getScore());
 
         } catch (Exception e) {
             log.error("AI screening failed for application: {}", applicationId, e);
-            application.setAiStatus("FAILED");
+            application.setAiStatus("AI_FAILED");
             applicationRepository.save(application);
         }
     }
