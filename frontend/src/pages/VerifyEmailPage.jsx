@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api.js'
-import { getUser } from '../lib/storage.js'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 export function VerifyEmailPage() {
-  const user = useMemo(() => getUser(), [])
   const [sp] = useSearchParams()
   const token = sp.get('token') || ''
 
