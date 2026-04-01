@@ -1,3 +1,6 @@
+# Full stack: docker compose up -d
+# Chỉ PostgreSQL + Redis (chạy Spring local / IDE): docker compose up -d postgres_db redis_cache
+
 services:
   postgres_db:
     image: postgres:15-alpine
@@ -54,9 +57,13 @@ services:
       REFRESH_JWT_SECRET: ${REFRESH_JWT_SECRET:-default_refresh_jwt_secret}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       AUTH_EMAIL_DEMO_LOG_ONLY: "true"
+      # Nếu DB chưa seed / password_hash không khớp, bật để reset/tạo admin login được
+      APP_BOOTSTRAP_ADMIN_ENABLED: ${APP_BOOTSTRAP_ADMIN_ENABLED:-true}
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL:-admin@vthr.com}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:-Admin@123}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health | grep -q UP || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10

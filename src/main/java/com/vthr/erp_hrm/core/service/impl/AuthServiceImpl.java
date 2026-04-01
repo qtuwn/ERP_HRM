@@ -204,7 +204,8 @@ public class AuthServiceImpl implements AuthService {
             companyService.addHrMember(companyId, saved.getId(), role.name());
         }
 
-        createEmailVerificationAndDispatch(saved);
+        // UI hiện tại dùng OTP verify email (/verify-otp). Tạo OTP thật thay vì chỉ magic-link.
+        createEmailVerificationOtpAndDispatch(saved);
         return saved;
     }
 
@@ -254,6 +255,23 @@ public class AuthServiceImpl implements AuthService {
 
         enforceOtpResendCooldown(user.getId());
         createEmailVerificationAndDispatch(user);
+    }
+
+    @Override
+    public void resendVerificationOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getStatus() == AccountStatus.DELETED) {
+            throw new RuntimeException("User no longer available");
+        }
+
+        if (user.isEmailVerified() && user.getStatus() == AccountStatus.ACTIVE) {
+            return;
+        }
+
+        enforceOtpResendCooldown(user.getId());
+        createEmailVerificationOtpAndDispatch(user);
     }
 
     @Override
@@ -397,6 +415,38 @@ public class AuthServiceImpl implements AuthService {
                         "fullName", user.getFullName(),
                         "verifyUrl", verifyUrl,
                         "hours", emailVerificationExpirationHours));
+    }
+
+    private void createEmailVerificationOtpAndDispatch(User user) {
+        ZonedDateTime now = ZonedDateTime.now();
+        for (EmailVerificationToken token : emailVerificationTokenRepository.findActiveByUserId(user.getId())) {
+            token.setUsedAt(now);
+            emailVerificationTokenRepository.save(token);
+        }
+
+        String otp = generateOtp();
+        String tokenHash = jwtService.hashToken(buildScopedOtpKey(user.getEmail(), otp));
+
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .userId(user.getId())
+                .tokenHash(tokenHash)
+                .expiresAt(now.plus(otpExpirationMinutes, ChronoUnit.MINUTES))
+                .build();
+        emailVerificationTokenRepository.save(verificationToken);
+
+        if (emailVerificationDemoLogOnly) {
+            System.out.println("[DEMO][EMAIL_VERIFY_OTP] " + user.getEmail() + " -> " + otp);
+            return;
+        }
+
+        emailQueueService.enqueueEmail(
+                user.getEmail(),
+                "OTP xac thuc email tai khoan VTHR",
+                "verify_email_otp",
+                Map.of(
+                        "fullName", user.getFullName(),
+                        "otp", otp,
+                        "minutes", otpExpirationMinutes));
     }
 
     private void enforceOtpResendCooldown(UUID userId) {

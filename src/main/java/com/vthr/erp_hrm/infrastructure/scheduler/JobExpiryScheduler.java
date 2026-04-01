@@ -8,17 +8,17 @@ import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Component
-@EnableScheduling
 @RequiredArgsConstructor
 @Slf4j
 public class JobExpiryScheduler {
@@ -26,13 +26,18 @@ public class JobExpiryScheduler {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final EmailQueueService emailQueueService;
+    private final Clock clock;
+
+    @Value("${app.jobs.expiry.email.enabled:false}")
+    private boolean expiryEmailEnabled;
 
     // Run every hour at minute 0
     @Scheduled(cron = "0 0 * * * *")
     public void autoCloseExpiredJobs() {
-        log.info("Running Job Expiry Scheduler at {}", ZonedDateTime.now());
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        log.info("Running Job Expiry Scheduler at {}", now);
         List<Job> expiredJobs = jobRepository.findByStatusAndExpiresAtBefore(
-                JobStatus.OPEN.name(), ZonedDateTime.now());
+                JobStatus.OPEN.name(), now);
 
         if (expiredJobs.isEmpty()) {
             return;
@@ -42,10 +47,14 @@ public class JobExpiryScheduler {
 
         for (Job job : expiredJobs) {
             job.setStatus(JobStatus.CLOSED);
-            job.setUpdatedAt(ZonedDateTime.now());
+            job.setUpdatedAt(now);
             jobRepository.save(job);
 
             log.info("Automatically closed job ID: {}", job.getId());
+
+            if (!expiryEmailEnabled) {
+                continue;
+            }
 
             User hrUser = userRepository.findById(job.getCreatedBy()).orElse(null);
             if (hrUser != null) {

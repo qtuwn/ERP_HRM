@@ -31,16 +31,22 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs", "/api/jobs/**")
                         .permitAll()
                         .requestMatchers(
                                 "/", "/login", "/register",
+                                "/forbidden",
+                                "/verify-email", "/verify-otp",
+                                "/forgot-password", "/forgot-password/**",
                                 "/jobs", "/jobs/**",
                                 "/dashboard", "/jobs/*/kanban",
                                 "/admin/users",
                                 "/company/staff",
                                 "/candidate/applications", "/profile",
+                                "/index.html",
+                                "/assets/**", "/favicon.svg", "/favicon.ico",
                                 "/css/**", "/js/**", "/images/**", "/error")
                         .permitAll()
                         .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR", "COMPANY")
@@ -51,12 +57,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/applications/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType("application/json");
-                    response.getWriter()
-                            .write("{\"success\":false,\"message\":\"Unauthorized: Token expired or invalid\"}");
-                }));
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter()
+                                    .write("{\"success\":false,\"message\":\"Unauthorized: Token expired or invalid\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"success\":false,\"message\":\"Forbidden\"}");
+                        }));
         return http.build();
     }
 

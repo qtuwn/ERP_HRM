@@ -68,11 +68,17 @@ public class GlobalExceptionHandler {
             String msg = ex.getMessage().toLowerCase();
             if (msg.contains("invalid credentials") || msg.contains("invalid refresh token") || msg.contains("expired refresh token")) {
                 status = HttpStatus.UNAUTHORIZED;
+            } else if (msg.contains("rate limit")) {
+                status = HttpStatus.TOO_MANY_REQUESTS;
+            } else if (msg.contains("access denied")) {
+                status = HttpStatus.FORBIDDEN;
             } else if (msg.contains("not found")) {
                 status = HttpStatus.NOT_FOUND;
             } else if (msg.contains("already exists") || msg.contains("already applied")) {
                 status = HttpStatus.CONFLICT;
             } else if (msg.contains("invalid file") || msg.contains("unsupported") || msg.contains("size exceeded")) {
+                status = HttpStatus.BAD_REQUEST;
+            } else if (msg.contains("too long")) {
                 status = HttpStatus.BAD_REQUEST;
             }
         }

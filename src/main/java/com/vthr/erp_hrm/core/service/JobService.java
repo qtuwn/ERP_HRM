@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface JobService {
-    Page<Job> getOpenJobs(Pageable pageable);
+    Page<Job> getOpenJobs(String search, Pageable pageable);
 
     Page<Job> getAllJobs(Pageable pageable);
 

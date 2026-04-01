@@ -57,4 +57,40 @@ public class LocalFileStorageService implements FileStorageService {
 
         return jobId.toString() + "/" + targetFileName;
     }
+
+    @Override
+    public String copyResumeToJobCv(String resumeStoragePath, UUID jobId) throws IOException {
+        if (resumeStoragePath == null || resumeStoragePath.isBlank()) {
+            throw new RuntimeException("Resume storage path is blank");
+        }
+
+        String normalized = resumeStoragePath.trim().replace("\\", "/");
+        if (normalized.contains("..")) {
+            throw new RuntimeException("Invalid resume path");
+        }
+
+        Path source = this.rootLocation.resolve("resumes").resolve(normalized).normalize();
+        if (!source.startsWith(this.rootLocation.resolve("resumes").normalize())) {
+            throw new RuntimeException("Invalid resume path");
+        }
+        if (!Files.exists(source)) {
+            throw new RuntimeException("Resume file not found");
+        }
+
+        String filename = source.getFileName().toString();
+        String extension = "";
+        int i = filename.lastIndexOf('.');
+        if (i >= 0) {
+            extension = filename.substring(i);
+        }
+
+        String targetFileName = UUID.randomUUID().toString() + extension;
+        Path jobDir = this.rootLocation.resolve(jobId.toString());
+        Files.createDirectories(jobDir);
+
+        Path target = jobDir.resolve(targetFileName);
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+
+        return jobId.toString() + "/" + targetFileName;
+    }
 }

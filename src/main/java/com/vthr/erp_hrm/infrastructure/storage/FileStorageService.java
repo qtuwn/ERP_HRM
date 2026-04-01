@@ -6,4 +6,6 @@ import java.util.UUID;
 
 public interface FileStorageService {
     String storeFile(MultipartFile file, UUID jobId) throws IOException;
+
+    String copyResumeToJobCv(String resumeStoragePath, UUID jobId) throws IOException;
 }

@@ -120,7 +120,7 @@ public class AuthController {
 
     @PostMapping("/resend-otp")
     public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ResendVerificationRequest request) {
-        authService.resendVerification(request.getEmail());
+        authService.resendVerificationOtp(request.getEmail());
         return ResponseEntity.ok(ApiResponse.success(null, "OTP resent"));
     }
 

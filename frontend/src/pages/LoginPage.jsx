@@ -1,12 +1,20 @@
 import { useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { setSession } from '../lib/storage.js'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+
+function pickRedirectTarget(searchParams, locationState) {
+  const next = searchParams.get('next')
+  if (next && next.startsWith('/') && !next.startsWith('//')) return next
+  if (locationState?.from && String(locationState.from).startsWith('/')) return locationState.from
+  return '/dashboard'
+}
 
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const from = useMemo(() => location.state?.from || '/dashboard', [location.state])
+  const [searchParams] = useSearchParams()
+  const from = useMemo(() => pickRedirectTarget(searchParams, location.state), [searchParams, location.state])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,63 +42,65 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
-      <div className="rounded-2xl border bg-white p-6">
-        <h1 className="text-xl font-semibold tracking-tight">Đăng nhập</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Dùng API hiện tại của Spring Boot: <code className="rounded bg-slate-100 px-1">/api/auth/login</code>
-        </p>
-
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Password</label>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <button
-            disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Đang đăng nhập…' : 'Login'}
-          </button>
-        </form>
+    <section className="max-w-md mx-auto mt-20 p-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Đăng nhập</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2">Đăng nhập để quản lý và ứng tuyển việc làm</p>
       </div>
 
-      <div className="rounded-2xl border bg-gradient-to-br from-blue-600 to-blue-800 p-6 text-white">
-        <div className="text-sm/6 opacity-90">Demo scope cho ngày mai</div>
-        <div className="mt-2 text-2xl font-semibold tracking-tight">React + Vite + Tailwind</div>
-        <ul className="mt-4 space-y-2 text-sm text-white/90">
-          <li>- A: Jobs list (public) từ <code className="rounded bg-white/10 px-1">GET /api/jobs</code></li>
-          <li>- B: Dashboard stats từ <code className="rounded bg-white/10 px-1">GET /api/dashboard/stats</code></li>
-          <li>- JWT lưu localStorage, proxy <code className="rounded bg-white/10 px-1">/api</code> → 8080</li>
-        </ul>
+      <form className="space-y-6" onSubmit={onSubmit}>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+          <input
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] outline-none transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-slate-100"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu</label>
+          <input
+            type="password"
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] outline-none transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-slate-100"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
+          <div className="mt-2 text-right">
+            <Link to="/forgot-password" className="text-sm font-medium text-[#2563eb] hover:underline">
+              Quên mật khẩu?
+            </Link>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          disabled={loading}
+          className="w-full bg-[#2563eb] text-white font-medium py-2.5 rounded-lg hover:bg-[#1d4ed8] transition-colors shadow-sm disabled:opacity-50"
+        >
+          {loading ? 'Đang đăng nhập…' : 'Đăng nhập'}
+        </button>
+      </form>
+
+      <div className="mt-6 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
+        <span>
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="text-[#2563eb] font-medium hover:underline">
+            Đăng ký ngay
+          </Link>
+        </span>
       </div>
-    </div>
+    </section>
   )
 }
-

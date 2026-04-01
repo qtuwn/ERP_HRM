@@ -29,9 +29,16 @@ public class ChatController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getMessageHistory(
             @PathVariable UUID applicationId,
-            @PageableDefault(size = 50) Pageable pageable) {
+            @PageableDefault(size = 50) Pageable pageable,
+            Authentication authentication) {
 
-        Page<Message> msgPage = chatService.getMessageHistory(applicationId, pageable);
+        UUID viewerId = UUID.fromString(authentication.getName());
+        Role viewerRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(auth -> Role.fromString(auth.getAuthority()))
+                .orElse(Role.CANDIDATE);
+
+        Page<Message> msgPage = chatService.getMessageHistory(applicationId, viewerId, viewerRole, pageable);
         Page<MessageResponse> responsePage = msgPage.map(this::mapToResponse);
 
         return ResponseEntity.ok(ApiResponse.success(responsePage, "History fetched"));

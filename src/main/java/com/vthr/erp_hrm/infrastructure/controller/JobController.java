@@ -30,8 +30,10 @@ public class JobController {
 
     // Public APIs
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<JobResponse>>> getOpenJobs(Pageable pageable) {
-        Page<JobResponse> jobs = jobService.getOpenJobs(pageable).map(JobResponse::fromDomain);
+    public ResponseEntity<ApiResponse<Page<JobResponse>>> getOpenJobs(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        Page<JobResponse> jobs = jobService.getOpenJobs(q, pageable).map(JobResponse::fromDomain);
         return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched open jobs successfully"));
     }
 

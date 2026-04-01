@@ -1,6 +1,7 @@
 package com.vthr.erp_hrm.infrastructure.controller;
 
 import com.vthr.erp_hrm.core.model.Interview;
+import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.InterviewService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import lombok.Data;
@@ -51,9 +52,16 @@ public class InterviewController {
 
     @GetMapping("/applications/{applicationId}/interviews")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'CANDIDATE')")
-    public ResponseEntity<ApiResponse<List<Interview>>> getInterviews(@PathVariable UUID applicationId) {
+    public ResponseEntity<ApiResponse<List<Interview>>> getInterviews(
+            @PathVariable UUID applicationId,
+            Authentication authentication) {
+        UUID viewerId = UUID.fromString(authentication.getName());
+        Role viewerRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> Role.fromString(a.getAuthority()))
+                .orElse(Role.CANDIDATE);
         return ResponseEntity.ok(ApiResponse.success(
-                interviewService.getInterviewsByApplication(applicationId), 
+                interviewService.getInterviewsByApplication(applicationId, viewerId, viewerRole),
                 "Fetched interviews successfully"
         ));
     }
@@ -62,8 +70,14 @@ public class InterviewController {
     @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     public ResponseEntity<ApiResponse<Interview>> updateInterviewStatus(
             @PathVariable UUID interviewId,
-            @RequestBody UpdateInterviewStatusRequest request) {
-        Interview interview = interviewService.updateInterviewStatus(interviewId, request.getStatus());
+            @RequestBody UpdateInterviewStatusRequest request,
+            Authentication authentication) {
+        UUID actorId = UUID.fromString(authentication.getName());
+        Role actorRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> Role.fromString(a.getAuthority()))
+                .orElse(Role.HR);
+        Interview interview = interviewService.updateInterviewStatus(interviewId, request.getStatus(), actorId, actorRole);
         return ResponseEntity.ok(ApiResponse.success(interview, "Updated interview status effectively"));
     }
 }

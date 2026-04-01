@@ -57,6 +57,7 @@ class AdminUserControllerTest {
         @BeforeEach
         void setup() {
                 this.mockMvc = MockMvcBuilders.standaloneSetup(adminUserController)
+                                .setControllerAdvice(new com.vthr.erp_hrm.infrastructure.config.GlobalExceptionHandler())
                                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                                 .build();
                 this.objectMapper = new ObjectMapper();
@@ -135,6 +136,8 @@ class AdminUserControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
                                 .andExpect(jsonPath("$.data.role").value("HR"));
+
+                verify(auditLogService).logAction(eq(adminId), eq("UPDATE_USER_ROLE"), eq("User"), eq(targetId), any(String.class));
         }
 
         @Test
@@ -159,6 +162,9 @@ class AdminUserControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
                                 .andExpect(jsonPath("$.data.active").value(true));
+
+                verify(auditLogService).logAction(eq(adminId), eq("LOCK_USER"), eq("User"), eq(targetId), any(String.class));
+                verify(auditLogService).logAction(eq(adminId), eq("UNLOCK_USER"), eq("User"), eq(targetId), any(String.class));
         }
 
         @Test
@@ -175,6 +181,59 @@ class AdminUserControllerTest {
                                 .andExpect(jsonPath("$.success").value(true));
 
                 verify(userService).deleteUser(targetId);
+                verify(auditLogService).logAction(eq(adminId), eq("DELETE_USER"), eq("User"), eq(targetId), any(String.class));
+        }
+
+        @Test
+        void lockUser_shouldRejectSelfAction() throws Exception {
+                mockMvc.perform(patch("/api/admin/users/{id}/lock", adminId)
+                                .principal(() -> adminId.toString()))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.success").value(false));
+        }
+
+        @Test
+        void lockUser_shouldRejectLockingLastAdmin() throws Exception {
+                UUID targetId = UUID.randomUUID();
+                when(userService.getUserById(targetId))
+                                .thenReturn(user(targetId, "admin2@vthr.com", Role.ADMIN, true, "Admin2"));
+                when(userService.countUsersByRole(Role.ADMIN)).thenReturn(1L);
+
+                mockMvc.perform(patch("/api/admin/users/{id}/lock", targetId)
+                                .principal(() -> adminId.toString()))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.success").value(false));
+        }
+
+        @Test
+        void deleteUser_shouldRejectDeletingLastAdmin() throws Exception {
+                UUID targetId = UUID.randomUUID();
+                when(userService.getUserById(targetId))
+                                .thenReturn(user(targetId, "admin2@vthr.com", Role.ADMIN, true, "Admin2"));
+                when(userService.countUsersByRole(Role.ADMIN)).thenReturn(1L);
+
+                mockMvc.perform(delete("/api/admin/users/{id}", targetId)
+                                .principal(() -> adminId.toString()))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.success").value(false));
+        }
+
+        @Test
+        void updateRole_shouldRejectDemotingLastAdmin() throws Exception {
+                UUID targetId = UUID.randomUUID();
+                UpdateUserRoleRequest request = new UpdateUserRoleRequest();
+                request.setRole(Role.HR);
+
+                when(userService.getUserById(targetId))
+                                .thenReturn(user(targetId, "admin2@vthr.com", Role.ADMIN, true, "Admin2"));
+                when(userService.countUsersByRole(Role.ADMIN)).thenReturn(1L);
+
+                mockMvc.perform(patch("/api/admin/users/{id}/role", targetId)
+                                .principal(() -> adminId.toString())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.success").value(false));
         }
 
         private User user(UUID id, String email, Role role, boolean active, String fullName) {

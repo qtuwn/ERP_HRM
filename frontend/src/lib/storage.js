@@ -8,6 +8,11 @@ export function setSession({ accessToken, refreshToken, user }) {
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
+export function setUser(user) {
+  if (!user) return
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+}
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
@@ -28,3 +33,12 @@ export function getUser() {
   }
 }
 
+/** Chuẩn hóa role từ JWT/user JSON (ADMIN, ROLE_HR, …) → ADMIN | HR | COMPANY | CANDIDATE */
+export function normalizeUserRole(role) {
+  if (role == null) return ''
+  let s = String(role).trim().toUpperCase()
+  if (s.startsWith('ROLE_')) s = s.slice(5)
+  if (s === 'SUPER_ADMIN' || s === 'SUPERADMIN') return 'ADMIN'
+  if (s === 'HR_MANAGER') return 'COMPANY'
+  return s
+}

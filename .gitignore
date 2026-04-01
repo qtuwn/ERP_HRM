@@ -38,3 +38,8 @@ src/main/resources/application.properties
 ### Environment ###
 .env
 !.env.example
+
+### Vite SPA bundle (sinh bởi `cd frontend && npm run build` hoặc Dockerfile)
+# Giữ thư mục bằng .gitkeep; bundle không commit để tránh drift & diff khổng lồ.
+src/main/resources/static/**
+!src/main/resources/static/.gitkeep

@@ -55,4 +55,37 @@ public class FileController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping("/resumes/{userId}/{filename}")
+    public ResponseEntity<Resource> downloadResume(
+            @PathVariable UUID userId,
+            @PathVariable String filename,
+            @RequestParam long expires,
+            @RequestParam String signature
+    ) {
+        String objectPath = userId.toString() + "/" + filename;
+
+        if (!signedUrlService.verifySignature(objectPath, expires, signature)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            Path file = Paths.get(uploadDir).resolve("resumes").resolve(objectPath).normalize();
+            Resource resource = new UrlResource(file.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = filename.endsWith(".pdf")
+                        ? "application/pdf"
+                        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

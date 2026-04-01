@@ -16,11 +16,6 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    @GetMapping("/dashboard")
-    public String getDashboardPage() {
-        return "hr/dashboard";
-    }
-
     @GetMapping("/api/dashboard/stats")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
     @ResponseBody

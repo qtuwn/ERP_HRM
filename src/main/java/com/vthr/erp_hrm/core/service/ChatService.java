@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface ChatService {
     Message sendMessage(UUID applicationId, UUID senderId, Role senderRole, String content);
-    Page<Message> getMessageHistory(UUID applicationId, Pageable pageable);
+
+    Page<Message> getMessageHistory(UUID applicationId, UUID viewerId, Role viewerRole, Pageable pageable);
+
     void indicateTyping(UUID applicationId, UUID senderId, Role senderRole);
 }

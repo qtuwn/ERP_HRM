@@ -6,5 +6,8 @@ import java.util.UUID;
 
 public interface ApplicationStageHistoryRepository {
     List<ApplicationStageHistory> findByApplicationIdOrderByCreatedAtDesc(UUID applicationId);
+
+    List<ApplicationStageHistory> findByApplicationIdOrderByCreatedAtAsc(UUID applicationId);
+
     ApplicationStageHistory save(ApplicationStageHistory history);
 }

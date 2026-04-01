@@ -21,8 +21,8 @@ public class JobServiceImpl implements JobService {
     private final JobRepository jobRepository;
 
     @Override
-    public Page<Job> getOpenJobs(Pageable pageable) {
-        return jobRepository.findByStatus(JobStatus.OPEN, pageable);
+    public Page<Job> getOpenJobs(String search, Pageable pageable) {
+        return jobRepository.findOpenJobsWithOptionalKeyword(search, pageable);
     }
 
     @Override

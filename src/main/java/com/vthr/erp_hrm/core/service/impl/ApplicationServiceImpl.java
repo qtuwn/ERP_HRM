@@ -1,17 +1,22 @@
 package com.vthr.erp_hrm.core.service.impl;
 
 import com.vthr.erp_hrm.core.model.Application;
+import com.vthr.erp_hrm.core.model.ApplicationStageHistory;
 import com.vthr.erp_hrm.core.model.ApplicationStatus;
 import com.vthr.erp_hrm.core.model.Job;
 import com.vthr.erp_hrm.core.model.JobStatus;
+import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.repository.ApplicationRepository;
+import com.vthr.erp_hrm.core.service.ApplicationAccessService;
 import com.vthr.erp_hrm.core.service.ApplicationService;
 import com.vthr.erp_hrm.core.service.JobService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
@@ -21,9 +26,13 @@ import com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse;
 @RequiredArgsConstructor
 public class ApplicationServiceImpl implements ApplicationService {
 
+    @Value("${app.ai.screening.enabled:false}")
+    private boolean aiScreeningEnabled;
+
     private final ApplicationRepository applicationRepository;
     private final JobService jobService;
     private final com.vthr.erp_hrm.infrastructure.ai.AiQueueService aiQueueService;
+    private final ApplicationAccessService applicationAccessService;
     private final com.vthr.erp_hrm.core.repository.ApplicationStageHistoryRepository historyRepository;
     private final com.vthr.erp_hrm.core.repository.UserRepository userRepository;
     private final com.vthr.erp_hrm.core.repository.AIEvaluationRepository aiEvaluationRepository;
@@ -49,10 +58,12 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .candidateId(candidateId)
                 .cvUrl(cvUrl)
                 .status(ApplicationStatus.APPLIED) // Fixed to APPLIED from PENDING originally via mapper
-                .aiStatus("AI_PROCESSING")
+                .aiStatus(aiScreeningEnabled ? "AI_QUEUED" : "DISABLED")
                 .build();
         Application saved = applicationRepository.save(application);
-        aiQueueService.enqueueApplication(saved.getId());
+        if (aiScreeningEnabled) {
+            aiQueueService.enqueueApplication(saved.getId());
+        }
         realtimeEventService.emitJobEvent(jobId, "application:new", saved);
 
         User candidate = userRepository.findById(candidateId).orElse(null);
@@ -121,6 +132,10 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     public Application updateApplicationStatus(UUID id, ApplicationStatus status, UUID changedBy, String note) {
+        User changer = userRepository.findById(changedBy)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        applicationAccessService.requireRecruiterForManagement(changer.getId(), changer.getRole(), id);
+
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
 
@@ -177,6 +192,37 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    public com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse bulkUpdateApplicationStatus(
+            java.util.List<UUID> applicationIds,
+            ApplicationStatus status,
+            UUID changedBy,
+            String note
+    ) {
+        if (applicationIds == null || applicationIds.isEmpty()) {
+            return com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse.builder()
+                    .succeededIds(java.util.List.of())
+                    .failed(java.util.Map.of())
+                    .build();
+        }
+        java.util.List<UUID> ok = new java.util.ArrayList<>();
+        java.util.Map<UUID, String> failed = new java.util.LinkedHashMap<>();
+
+        for (UUID id : applicationIds) {
+            try {
+                updateApplicationStatus(id, status, changedBy, note);
+                ok.add(id);
+            } catch (RuntimeException ex) {
+                failed.put(id, ex.getMessage() != null ? ex.getMessage() : "Failed");
+            }
+        }
+
+        return com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse.builder()
+                .succeededIds(ok)
+                .failed(failed)
+                .build();
+    }
+
+    @Override
     public com.vthr.erp_hrm.infrastructure.controller.response.CandidateApplicationDetailResponse getApplicationDetailForCandidate(
             UUID appId, UUID candidateId) {
         Application app = applicationRepository.findById(appId)
@@ -193,7 +239,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             appResponse.setCvUrl(signedUrlService.generateSignedUrl("/api/files/cvs", app.getCvUrl()));
         }
 
-        String jobTitle = jobService.getPublicJobById(app.getJobId()).getTitle();
+        Job job = jobService.getJobById(app.getJobId());
+        String jobTitle = job.getTitle();
         appResponse.setJobTitle(jobTitle);
 
         com.vthr.erp_hrm.core.model.AIEvaluation aiEval = aiEvaluationRepository.findByApplicationId(appId)
@@ -208,5 +255,11 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .aiEvaluation(aiEval)
                 .interviews(interviews)
                 .build();
+    }
+
+    @Override
+    public List<ApplicationStageHistory> getApplicationStageHistory(UUID applicationId, UUID userId, Role role) {
+        applicationAccessService.requireParticipantForMessaging(userId, role, applicationId);
+        return historyRepository.findByApplicationIdOrderByCreatedAtAsc(applicationId);
     }
 }

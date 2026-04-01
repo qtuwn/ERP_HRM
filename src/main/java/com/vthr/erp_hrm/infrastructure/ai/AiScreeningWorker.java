@@ -34,8 +34,14 @@ public class AiScreeningWorker {
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
 
+    @Value("${app.ai.screening.enabled:false}")
+    private boolean aiScreeningEnabled;
+
     @Scheduled(fixedDelay = 5000)
     public void processQueue() {
+        if (!aiScreeningEnabled) {
+            return;
+        }
         String applicationIdStr = queueService.popApplication();
         if (applicationIdStr == null) return;
 
