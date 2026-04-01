@@ -21,6 +21,7 @@ import java.util.UUID;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse;
+import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +41,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService realtimeEventService;
     private final EmailQueueService emailQueueService;
     private final com.vthr.erp_hrm.infrastructure.storage.SignedUrlService signedUrlService;
+    private final WebhookOutboxService webhookOutboxService;
 
     @Override
     public Application applyForJob(UUID jobId, UUID candidateId, String cvUrl) {
@@ -65,6 +67,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             aiQueueService.enqueueApplication(saved.getId());
         }
         realtimeEventService.emitJobEvent(jobId, "application:new", saved);
+        webhookOutboxService.enqueueForApplicationApplied(saved.getId());
 
         User candidate = userRepository.findById(candidateId).orElse(null);
         if (candidate != null) {
@@ -143,6 +146,10 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (oldStatus == status)
             return application;
 
+        if (oldStatus == ApplicationStatus.REJECTED || oldStatus == ApplicationStatus.HIRED) {
+            throw new RuntimeException("Invalid status transition");
+        }
+
         application.setStatus(status);
         Application saved = applicationRepository.save(application);
 
@@ -155,6 +162,9 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build());
 
         realtimeEventService.emitJobEvent(saved.getJobId(), "application:stage_changed", saved);
+        if (status == ApplicationStatus.REJECTED) {
+            webhookOutboxService.enqueueForApplicationRejected(saved.getId());
+        }
 
         Job job = jobService.getJobById(application.getJobId());
         User candidate = userRepository.findById(application.getCandidateId()).orElse(null);

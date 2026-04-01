@@ -48,18 +48,30 @@ Optional nâng cao (không chặn sprint ngắn):
 
 ### Epic A — Căn chỉnh đặc tả & nợ kỹ thuật (Documentation / Gap)
 
+### 2.1. Bảng mapping `ApplicationStatus` → nhãn UI (Candidate)
+
+| `ApplicationStatus` (BE) | Nhãn hiển thị (FE) | Ghi chú |
+|---|---|---|
+| `APPLIED` | Đã nộp | Bước 1 |
+| `AI_QUEUED` / `AI_SCREENING` / `AI_PROCESSING` | Đã nộp (AI đang xử lý) | Gom về bước 1 (base flow không phụ thuộc AI) |
+| `HR_REVIEW` | HR duyệt | Bước 2 |
+| `INTERVIEW` | Phỏng vấn | Bước 3 |
+| `OFFER` | Offer | Bước 4 |
+| `HIRED` | Đã nhận | Bước 5 |
+| `REJECTED` | Từ chối | Kết thúc (thất bại) |
+
 | ID | Task nhỏ | Checklist | Unit test gợi ý | Manual test (xem §5) |
 |----|-----------|-----------|-----------------|----------------------|
-| A1 | Bản đồ role: bảng mapping `ADMIN/COMPANY/HR/CANDIDATE` ↔ `ROLE_SYSADMIN/ROLE_HR/ROLE_CANDIDATE` trong doc; quyết định có thêm `SYSADMIN` hay gộp vào `ADMIN`. | [ ] Tài liệu cập nhật<br>[ ] Team chốt | — | MT-ADM-01 |
-| A2 | Chat: ghi rõ **STOMP** thay Socket.IO trong `recruitment_platform_design.md` hoặc file kiến trúc liên kết. | [ ] Doc chỉnh<br>[ ] Link từ README/rules | — | MT-CHAT-01 |
-| A3 | Application tracker UI: đối chiếu stepper tài liệu (Applied → … → Offered) với status thực tế trong DB/API. | [ ] Bảng mapping status<br>[ ] FE hiển thị đúng nhãn | Test pure function `displayStatus` / mapper | MT-CAN-03 |
-| A4 | Module AI: giữ **tắt** theo đặc tả mới; tách flag config nếu còn code Gemini trong luồng apply. | [ ] Không gọi AI trong happy path bắt buộc<br>[ ] Document env | Mock `CvParserService` / AI worker không chạy | MT-APP-02 |
+| A1 | Bản đồ role: bảng mapping `ADMIN/COMPANY/HR/CANDIDATE` ↔ `ROLE_SYSADMIN/ROLE_HR/ROLE_CANDIDATE` trong doc; quyết định có thêm `SYSADMIN` hay gộp vào `ADMIN`. | [x] Tài liệu cập nhật (xem `recruitment_platform_design.md` §1.4)<br>[x] Quyết định: **không** tạo `SYSADMIN` riêng, dùng `ADMIN` | — | MT-ADM-01 |
+| A2 | Chat: ghi rõ **STOMP** thay Socket.IO trong `recruitment_platform_design.md` hoặc file kiến trúc liên kết. | [x] Doc chỉnh (đã có ghi chú STOMP)<br>[x] Link từ `rules.md`/`CONTRIBUTING.md` | — | MT-CHAT-01 |
+| A3 | Application tracker UI: đối chiếu stepper tài liệu (Applied → … → Offered) với status thực tế trong DB/API. | [x] Bảng mapping status (xem §2.1)<br>[x] FE hiển thị stepper/timeline đúng nhãn | Test pure function `displayStatus` / mapper | MT-CAN-03 |
+| A4 | Module AI: giữ **tắt** theo đặc tả mới; tách flag config nếu còn code Gemini trong luồng apply. | [x] Không gọi AI trong happy path bắt buộc (flag default `false`)<br>[x] Document env (`app.ai.screening.enabled`, `APP_AI_SCREENING_ENABLED`) | Mock `CvParserService` / AI worker không chạy | MT-APP-02 |
 
 ### Epic B — Account & security (theo `account_management_end_to_end.md`)
 
 | ID | Task nhỏ | Checklist | Unit test gợi ý | Manual test |
 |----|-----------|-----------|-----------------|-------------|
-| B1 | Register: validate email/password; trùng email → 4xx rõ ràng. | [x] `@Valid` + rule password (>=8, chữ+số)<br>[ ] Message thống nhất | `AuthService` / validator (nếu tách) | MT-AUTH-01 |
+| B1 | Register: validate email/password; trùng email → 4xx rõ ràng. | [x] `@Valid` + rule password (>=8, chữ+số)<br>[x] Message thống nhất (chuẩn hoá message response ở `AuthController` cho quên mật khẩu) | `AuthService` / validator (nếu tách) | MT-AUTH-01 |
 | B2 | Verify email: token hết hạn / sai token; chuyển `PENDING` → `ACTIVE` đúng rule. | [x] OTP verify email (6 số)<br>[x] Resend OTP đúng endpoint | `AuthService.verifyEmail*` mock repo | MT-AUTH-02 |
 | B3 | Login: chặn user chưa verify (nếu policy yêu cầu). | [x] Policy (chặn khi `!emailVerified` / `PENDING`)<br>[x] Unit test login bị chặn | `AuthServiceImplTest` | MT-AUTH-03 |
 | B4 | Refresh / logout: revoke refresh token hợp lệ. | [x] Rotate refresh + revoke token cũ<br>[x] Logout revoke (nếu tồn tại) | `AuthServiceImplTest` | MT-AUTH-04 |
@@ -79,7 +91,7 @@ Optional nâng cao (không chặn sprint ngắn):
 | ID | Task nhỏ | Checklist | Unit test | Manual test |
 |----|-----------|-----------|-----------|-------------|
 | D1 | Public job list: pagination, search `q`, job OPEN. | [x] FE/BE hỗ trợ `q` + pagination (`GET /api/jobs`)<br>[x] Regression (unit `JobServiceImplTest`) | `JobService` search keyword | MT-JOB-01 |
-| D2 | Apply: duplicate apply → 409; lưu file an toàn. | [x] MIME/size (PDF/DOCX, <=5MB)<br>[ ] Signed URL nếu có | `ApplicationService.applyForJob` | MT-APP-01 |
+| D2 | Apply: duplicate apply → 409; lưu file an toàn. | [x] MIME/size (PDF/DOCX, <=5MB)<br>[x] Signed URL download CV (`SignedUrlService`, `/api/files/cvs/...`) | `ApplicationService.applyForJob` | MT-APP-01 |
 | D3 | Job hết hạn: cron đóng job (`system_design_uml` §3.5). | [x] `@Scheduled` đóng job quá hạn<br>[x] Email tùy config (`app.jobs.expiry.email.enabled`)<br>[x] Dùng `Clock` để test ổn định | `JobExpirySchedulerTest` | MT-JOB-02 |
 
 ### Epic E — Kanban & audit (theo recruitment_platform_design §4)
@@ -102,14 +114,14 @@ Optional nâng cao (không chặn sprint ngắn):
 
 | ID | Task nhỏ | Checklist | Unit test | Manual test |
 |----|-----------|-----------|-----------|-------------|
-| G1 | Workflow duyệt `company.is_verified_by_admin`. | [ ] API<br>[ ] FE queue | Service transition | MT-ADM-03 |
-| G2 | Master data: skills dictionary / categories. | [ ] CRUD admin<br>[ ] Flyway | Service CRUD | MT-ADM-04 |
+| G1 | Workflow duyệt `company.is_verified_by_admin`. | [x] Flyway thêm cột `companies.is_verified_by_admin` (mặc định `true` để không phá dữ liệu cũ; company mới set `false`)<br>[x] API admin: `GET /api/admin/companies/pending` + `PATCH /api/admin/companies/{id}/verify` (audit log)<br>[x] FE admin: trang `/admin/companies` để duyệt nhanh queue pending | (Tối thiểu) controller/service + repo query | MT-ADM-03 |
+| G2 | Master data: skills dictionary / categories. | [x] Flyway: `skill_categories`, `skills`<br>[x] API admin CRUD: `/api/admin/skill-dictionary/*` (+ audit log)<br>[x] FE admin: `/admin/master-data/skills` | `SkillDictionaryServiceImplTest` | MT-ADM-04 |
 
 ### Epic H — Tích hợp n8n / webhook (recruitment §6 — optional)
 
 | ID | Task nhỏ | Checklist | Unit test | Manual test |
 |----|-----------|-----------|-----------|-------------|
-| H1 | Outbox hoặc `POST` webhook sau apply / sau reject bulk. | [ ] Config URL<br>[ ] Không block request chính | Mock RestTemplate/WebClient | MT-WEB-01 |
+| H1 | Outbox hoặc `POST` webhook sau apply / sau reject bulk. | [x] Outbox DB `webhook_outbox` + worker dispatch theo schedule<br>[x] Config URL/secret/timeout/retry (`app.webhook.*`)<br>[x] Enqueue sau apply + sau REJECTED (bulk reject đi qua `updateApplicationStatus`) | (Tối thiểu) unit test service | MT-WEB-01 |
 
 ---
 
@@ -119,9 +131,9 @@ Optional nâng cao (không chặn sprint ngắn):
 
 ### Auth & user
 
-- [ ] `AuthService`: register thành công; email trùng; verify token invalid.
-- [ ] `AuthService`: login sai password; login user suspended (nếu có).
-- [ ] `AuthService`: refresh với token hết hạn / thu hồi.
+- [x] `AuthService`: register thành công; email trùng; verify token invalid. (`AuthServiceImplTest`)
+- [x] `AuthService`: login sai password; login user suspended (nếu có). (`AuthServiceImplTest`)
+- [x] `AuthService`: refresh với token hết hạn / thu hồi. (`AuthServiceImplTest`)
 
 ### Job & application
 
@@ -130,7 +142,7 @@ Optional nâng cao (không chặn sprint ngắn):
 
 ### Kanban / stage
 
-- [ ] Chuyển status hợp lệ; chuyển status không hợp lệ; ghi audit (nếu đã implement).
+- [x] Chuyển status hợp lệ; chuyển status không hợp lệ; ghi audit — `ApplicationServiceImplStageChangeTest`, `ApplicationServiceImplInvalidStageChangeTest`.
 
 ### Chat (ứng viên ↔ HR / công ty)
 
@@ -138,7 +150,7 @@ Optional nâng cao (không chặn sprint ngắn):
 
 ### Util / mapper
 
-- [ ] `Role.fromString` / normalizer (Java hoặc đối chiếu với FE `normalizeUserRole`).
+- [x] `Role.fromString` / normalizer (Java) — `RoleTest`.
 
 **Quy tắc:** không gọi PostgreSQL/Redis/Gemini thật trong unit test; dùng Mockito và `@ExtendWith(MockitoExtension.class)` (theo `rules.md` §12).
 

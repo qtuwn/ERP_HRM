@@ -33,3 +33,12 @@ app.chat.rate-limit.typing.cooldown-ms=1000
 
 # Job expiry scheduler
 app.jobs.expiry.email.enabled=false
+
+# Webhook outbox (optional)
+app.webhook.enabled=false
+app.webhook.url=
+app.webhook.secret=
+app.webhook.worker.delay-ms=2000
+app.webhook.batch-size=50
+app.webhook.max-attempts=10
+app.webhook.timeout-ms=3000

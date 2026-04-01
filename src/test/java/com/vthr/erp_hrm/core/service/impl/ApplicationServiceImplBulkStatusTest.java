@@ -18,6 +18,7 @@ import com.vthr.erp_hrm.core.service.JobService;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService;
+import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -62,6 +63,8 @@ class ApplicationServiceImplBulkStatusTest {
     private ApplicationAccessService applicationAccessService;
     @Mock
     private RealtimeEventService realtimeEventService;
+    @Mock
+    private WebhookOutboxService webhookOutboxService;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;

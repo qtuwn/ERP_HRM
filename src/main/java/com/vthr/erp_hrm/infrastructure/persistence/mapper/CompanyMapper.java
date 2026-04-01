@@ -12,6 +12,7 @@ public class CompanyMapper {
         return Company.builder()
                 .id(entity.getId())
                 .name(entity.getName())
+                .isVerifiedByAdmin(entity.isVerifiedByAdmin())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -24,6 +25,7 @@ public class CompanyMapper {
         return CompanyEntity.builder()
                 .id(domain.getId())
                 .name(domain.getName())
+                .isVerifiedByAdmin(domain.isVerifiedByAdmin())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();

@@ -12,6 +12,7 @@ import com.vthr.erp_hrm.infrastructure.ai.AiQueueService;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService;
+import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +53,8 @@ class ApplicationServiceImplApplyTest {
     private EmailQueueService emailQueueService;
     @Mock
     private SignedUrlService signedUrlService;
+    @Mock
+    private WebhookOutboxService webhookOutboxService;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;

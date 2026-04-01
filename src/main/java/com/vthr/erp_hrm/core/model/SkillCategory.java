@@ -8,10 +8,10 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class Company {
+public class SkillCategory {
     private UUID id;
     private String name;
-    private boolean isVerifiedByAdmin;
     private ZonedDateTime createdAt;
     private ZonedDateTime updatedAt;
 }
+
