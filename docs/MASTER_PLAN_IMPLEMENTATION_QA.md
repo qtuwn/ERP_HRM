@@ -32,9 +32,9 @@ Tài liệu kết hợp:
 
 Mỗi task nghiệp vụ **có thể merge** khi:
 
-- [ ] Code tuân `rules.md` (controller mỏng, logic ở service, `@Valid`, không lộ secret).
-- [ ] **Unit test** bắt buộc cho logic mới/đổi trong `core.service` (Mockito mock repository).
-- [ ] `./mvnw test` (hoặc ít nhất module liên quan) pass trên máy dev.
+- [x] Code tuân `rules.md` (controller mỏng, logic ở service, `@Valid`, không lộ secret).
+- [x] **Unit test** bắt buộc cho logic mới/đổi trong `core.service` (Mockito mock repository).
+- [x] `./mvnw test` (hoặc ít nhất module liên quan) pass trên máy dev.
 - [ ] **Manual test**: ít nhất 1 kịch bản trong mục 5 tương ứng được đánh dấu Pass/Fail + ghi chú build/version.
 
 Optional nâng cao (không chặn sprint ngắn):
