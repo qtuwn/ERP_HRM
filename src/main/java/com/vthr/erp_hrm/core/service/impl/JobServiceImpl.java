@@ -2,6 +2,7 @@ package com.vthr.erp_hrm.core.service.impl;
 
 import com.vthr.erp_hrm.core.model.Job;
 import com.vthr.erp_hrm.core.model.JobStatus;
+import com.vthr.erp_hrm.core.model.PublicJobFilterOptions;
 import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.service.JobService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,24 @@ public class JobServiceImpl implements JobService {
 
     @Override
     public Page<Job> getOpenJobs(String search, Pageable pageable) {
-        return jobRepository.findOpenJobsWithOptionalKeyword(search, pageable);
+        return getOpenJobs(search, null, null, null, null, null, pageable);
+    }
+
+    @Override
+    public Page<Job> getOpenJobs(
+            String search,
+            String city,
+            String industry,
+            String jobType,
+            String level,
+            String skill,
+            Pageable pageable) {
+        return jobRepository.findOpenJobsSearch(search, city, industry, jobType, level, skill, pageable);
+    }
+
+    @Override
+    public PublicJobFilterOptions getOpenJobFilterOptions() {
+        return jobRepository.findDistinctFilterOptionsForOpenJobs();
     }
 
     @Override
@@ -38,6 +56,11 @@ public class JobServiceImpl implements JobService {
     @Override
     public Page<Job> getJobsByCompanyId(UUID companyId, Pageable pageable) {
         return jobRepository.findByCompanyId(companyId, pageable);
+    }
+
+    @Override
+    public Page<Job> getJobsByCompanyIdAndCreatedBy(UUID companyId, UUID createdByUserId, Pageable pageable) {
+        return jobRepository.findByCompanyIdAndCreatedBy(companyId, createdByUserId, pageable);
     }
 
     @Override

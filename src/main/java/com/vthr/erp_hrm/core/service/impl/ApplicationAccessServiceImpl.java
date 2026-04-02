@@ -35,7 +35,7 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
             return;
         }
         if (role == Role.HR || role == Role.COMPANY) {
-            requireSameCompanyAsJob(userId, application.getJobId());
+            requireRecruiterAccessToJob(userId, role, application.getJobId());
             return;
         }
         throw new RuntimeException("Access denied");
@@ -52,7 +52,7 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
         if (role == Role.HR || role == Role.COMPANY) {
-            requireSameCompanyAsJob(userId, application.getJobId());
+            requireRecruiterAccessToJob(userId, role, application.getJobId());
             return;
         }
         throw new RuntimeException("Access denied");
@@ -67,13 +67,16 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
             return;
         }
         if (role == Role.HR || role == Role.COMPANY) {
-            requireSameCompanyAsJob(userId, jobId);
+            requireRecruiterAccessToJob(userId, role, jobId);
             return;
         }
         throw new RuntimeException("Access denied");
     }
 
-    private void requireSameCompanyAsJob(UUID userId, UUID jobId) {
+    /**
+     * COMPANY: cùng {@code companyId} với job. HR: thêm phải là người tạo job ({@code createdBy}).
+     */
+    private void requireRecruiterAccessToJob(UUID userId, Role role, UUID jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
         User user = userRepository.findById(userId)
@@ -81,6 +84,11 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
         if (user.getCompanyId() == null || job.getCompanyId() == null
                 || !user.getCompanyId().equals(job.getCompanyId())) {
             throw new RuntimeException("Access denied");
+        }
+        if (role == Role.HR) {
+            if (job.getCreatedBy() == null || !job.getCreatedBy().equals(userId)) {
+                throw new RuntimeException("Access denied");
+            }
         }
     }
 }

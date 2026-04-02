@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { ChevronDown, ExternalLink, FileText, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react'
-import { clearSession, getUser } from '../lib/storage.js'
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Bell, ChevronDown, ExternalLink, FileText, LogOut, Menu, MessageCircle, Moon, Settings, Sun } from 'lucide-react'
+import { api } from '../lib/api.js'
+import { clearSession, getUser, normalizeUserRole } from '../lib/storage.js'
 import { applyTheme, getStoredTheme } from '../lib/theme.js'
 import { ChatWidget } from './ChatWidget.jsx'
 import LogoImage from '../assets/LOGO.png'
@@ -17,10 +19,22 @@ function navBase(isActive) {
 
 export function PublicShell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useMemo(() => getUser(), [])
+  const candidate = Boolean(user && normalizeUserRole(user.role) === 'CANDIDATE')
   const [isDark, setIsDark] = useState(() => getStoredTheme() === 'dark')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+
+  const { data: filterOpts } = useQuery({
+    queryKey: ['job-filter-options'],
+    queryFn: async () => {
+      const j = await api.get('/api/jobs/filter-options')
+      return j?.data ?? {}
+    },
+    staleTime: 5 * 60_000,
+  })
+  const industries = Array.isArray(filterOpts?.industries) ? filterOpts.industries.filter(Boolean) : []
 
   useEffect(() => {
     applyTheme(getStoredTheme())
@@ -68,7 +82,7 @@ export function PublicShell() {
       <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
-            <Link to="/jobs" className="flex shrink-0 items-center gap-2">
+            <Link to="/" className="flex shrink-0 items-center gap-2">
               <img src={LogoImage} alt="VTHR Logo" className="hidden h-9 w-auto object-contain md:block" />
               <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">VTHR</span>
             </Link>
@@ -77,6 +91,41 @@ export function PublicShell() {
               <NavLink to="/jobs" className={({ isActive }) => navBase(isActive)}>
                 Việc làm
               </NavLink>
+
+              <details className="group relative">
+                <summary
+                  className={[
+                    'cursor-pointer list-none rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition marker:content-none hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+                    '[&::-webkit-details-marker]:hidden',
+                  ].join(' ')}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Danh mục
+                    <ChevronDown className="h-4 w-4 opacity-70 group-open:rotate-180 transition-transform" />
+                  </span>
+                </summary>
+                <div className="absolute left-0 z-50 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  <Link
+                    to="/jobs"
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Tất cả việc làm
+                  </Link>
+                  {industries.length === 0 ? (
+                    <div className="px-4 py-2 text-xs text-slate-500">Đang tải danh mục…</div>
+                  ) : (
+                    industries.map((ind) => (
+                      <Link
+                        key={ind}
+                        to={`/jobs?industry=${encodeURIComponent(ind)}`}
+                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        {ind}
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </details>
 
               <button
                 type="button"
@@ -104,6 +153,15 @@ export function PublicShell() {
                 </div>
               ) : (
                 <div className="ml-2 flex items-center gap-2">
+                  {candidate ? (
+                    <Link
+                      to="/notifications"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      title="Thông báo"
+                    >
+                      <Bell className="h-4 w-4" />
+                    </Link>
+                  ) : null}
                   {user && ['HR', 'ADMIN', 'COMPANY'].includes(user.role) ? (
                     <Link
                       to="/dashboard"
@@ -112,6 +170,23 @@ export function PublicShell() {
                       <ExternalLink className="h-4 w-4" />
                       Vào bảng điều khiển
                     </Link>
+                  ) : null}
+
+                  {candidate ? (
+                    <NavLink
+                      to="/messages"
+                      className={({ isActive }) =>
+                        [
+                          'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition',
+                          isActive || location.pathname.startsWith('/messages')
+                            ? 'border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb] dark:border-[#2563eb]/60 dark:bg-[#2563eb]/20 dark:text-blue-200'
+                            : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800',
+                        ].join(' ')
+                      }
+                    >
+                      <MessageCircle className="h-4 w-4 shrink-0" />
+                      <span>Tin nhắn</span>
+                    </NavLink>
                   ) : null}
 
                   <div className="relative">
@@ -134,9 +209,20 @@ export function PublicShell() {
 
                     {profileOpen ? (
                       <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                        {normalizeUserRole(user?.role) === 'CANDIDATE' ? (
+                          <Link
+                            to="/messages"
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                            onClick={() => setProfileOpen(false)}
+                          >
+                            <MessageCircle className="h-4 w-4 text-slate-400" />
+                            Trung tâm tin nhắn
+                          </Link>
+                        ) : null}
                         <Link
                           to="/candidate/applications"
                           className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                          onClick={() => setProfileOpen(false)}
                         >
                           <FileText className="h-4 w-4 text-slate-400" />
                           Ứng tuyển của tôi
@@ -172,6 +258,20 @@ export function PublicShell() {
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
+              {candidate && user ? (
+                <Link
+                  to="/messages"
+                  className={[
+                    'inline-flex h-9 w-9 items-center justify-center rounded-lg border text-slate-600 dark:text-slate-300',
+                    location.pathname.startsWith('/messages')
+                      ? 'border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb] dark:text-blue-300'
+                      : 'border-slate-200 dark:border-slate-700',
+                  ].join(' ')}
+                  title="Tin nhắn"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setMobileOpen((v) => !v)}
@@ -192,6 +292,24 @@ export function PublicShell() {
               >
                 Việc làm
               </Link>
+              <p className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Danh mục</p>
+              <Link
+                to="/jobs"
+                className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={() => setMobileOpen(false)}
+              >
+                Tất cả
+              </Link>
+              {industries.map((ind) => (
+                <Link
+                  key={ind}
+                  to={`/jobs?industry=${encodeURIComponent(ind)}`}
+                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {ind}
+                </Link>
+              ))}
 
               {!user ? (
                 <div className="mt-3 flex flex-col gap-2">
@@ -212,6 +330,26 @@ export function PublicShell() {
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
+                  {candidate ? (
+                    <>
+                      <Link
+                        to="/messages"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Tin nhắn
+                      </Link>
+                      <Link
+                        to="/notifications"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Bell className="h-4 w-4" />
+                        Thông báo
+                      </Link>
+                    </>
+                  ) : null}
                   {user && ['HR', 'ADMIN', 'COMPANY'].includes(user.role) ? (
                     <Link
                       to="/dashboard"
@@ -263,10 +401,10 @@ export function PublicShell() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div className="lg:col-span-1">
-              <div className="mb-4 flex items-center gap-2">
+              <Link to="/" className="mb-4 flex items-center gap-2 hover:opacity-90 transition-opacity">
                 <img src={LogoImage} alt="VTHR Logo" className="hidden h-10 w-auto object-contain md:block" />
                 <span className="text-lg font-bold text-slate-900 dark:text-white">VTHR Careers Hub</span>
-              </div>
+              </Link>
               <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Về VTHR
               </h4>

@@ -2,6 +2,7 @@ package com.vthr.erp_hrm.infrastructure.websocket;
 
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.ApplicationAccessService;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -95,10 +96,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                     log.warn("STOMP SUBSCRIBE denied (bad user id): {}", dest);
                     return null;
                 }
-                Role role = auth.getAuthorities().stream()
-                        .findFirst()
-                        .map(a -> Role.fromString(a.getAuthority()))
-                        .orElse(Role.CANDIDATE);
+                Role role = SecurityRoleResolver.resolveRole(auth);
                 try {
                     Matcher mApp = TOPIC_APPLICATION.matcher(dest);
                     if (mApp.matches()) {

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,6 +76,12 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Page<User> findByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable) {
         return jpaRepository.findByCompanyIdAndRoleAndStatusNot(companyId, role, AccountStatus.DELETED, pageable)
+                .map(userMapper::toDomain);
+    }
+
+    @Override
+    public Page<User> findByCompanyIdAndRoleIn(UUID companyId, Collection<Role> roles, Pageable pageable) {
+        return jpaRepository.findByCompanyIdAndRoleInAndStatusNot(companyId, roles, AccountStatus.DELETED, pageable)
                 .map(userMapper::toDomain);
     }
 

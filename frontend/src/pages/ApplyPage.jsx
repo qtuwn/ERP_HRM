@@ -173,6 +173,20 @@ export function ApplyPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400 italic">
               * Thông tin được lấy từ hồ sơ hiện tại của bạn.
             </p>
+            {user?.role === 'CANDIDATE' ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/40 dark:bg-blue-950/30">
+                <p className="text-sm text-slate-800 dark:text-slate-200">
+                  Bạn có thể upload CV vào <span className="font-semibold">kho cá nhân</span> trước, rồi ở bước 2 chọn
+                  &quot;Chọn từ kho CV&quot; thay vì upload mới mỗi lần.
+                </p>
+                <Link
+                  to="/profile/resumes"
+                  className="mt-2 inline-block text-sm font-semibold text-[#2563eb] hover:underline"
+                >
+                  Mở kho CV cá nhân →
+                </Link>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

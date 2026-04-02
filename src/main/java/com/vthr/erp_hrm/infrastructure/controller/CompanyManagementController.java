@@ -38,6 +38,8 @@ import java.util.UUID;
 @PreAuthorize("hasRole('COMPANY')")
 public class CompanyManagementController {
 
+    private static final List<Role> COMPANY_STAFF_ROLES = List.of(Role.HR, Role.COMPANY);
+
     private final UserService userService;
     private final CompanyService companyService;
     private final CompanyRepository companyRepository;
@@ -51,10 +53,12 @@ public class CompanyManagementController {
         User me = requireCompanyUser(principal);
 
         Role filterRole = role == null || role.isBlank() ? null : Role.fromString(role);
-        Page<User> usersDomain = (filterRole == null
-                ? userService.getUsersByCompanyId(me.getCompanyId(), pageable)
-                : userService.getUsersByCompanyIdAndRole(me.getCompanyId(), filterRole, pageable))
-                ;
+        if (filterRole != null && filterRole != Role.HR && filterRole != Role.COMPANY) {
+            throw new AccessDeniedException("Invalid role filter for company staff");
+        }
+        Page<User> usersDomain = filterRole == null
+                ? userService.getUsersByCompanyIdAndRolesIn(me.getCompanyId(), COMPANY_STAFF_ROLES, pageable)
+                : userService.getUsersByCompanyIdAndRole(me.getCompanyId(), filterRole, pageable);
 
         String myCompanyName = companyRepository.findById(me.getCompanyId())
                 .map(com.vthr.erp_hrm.infrastructure.persistence.entity.CompanyEntity::getName)
@@ -68,7 +72,7 @@ public class CompanyManagementController {
     @PatchMapping("/staff/{id}/lock")
     public ResponseEntity<ApiResponse<UserResponse>> lockStaff(@PathVariable UUID id, Principal principal) {
         User me = requireCompanyUser(principal);
-        ensureSameCompany(me, id);
+        requireManageableStaffPeer(me, id);
         UserResponse user = UserResponse.fromDomain(userService.setUserActive(id, false));
         return ResponseEntity.ok(ApiResponse.success(user, "Locked user successfully"));
     }
@@ -76,7 +80,7 @@ public class CompanyManagementController {
     @PatchMapping("/staff/{id}/unlock")
     public ResponseEntity<ApiResponse<UserResponse>> unlockStaff(@PathVariable UUID id, Principal principal) {
         User me = requireCompanyUser(principal);
-        ensureSameCompany(me, id);
+        requireManageableStaffPeer(me, id);
         UserResponse user = UserResponse.fromDomain(userService.setUserActive(id, true));
         return ResponseEntity.ok(ApiResponse.success(user, "Unlocked user successfully"));
     }
@@ -88,7 +92,7 @@ public class CompanyManagementController {
             Principal principal
     ) {
         User me = requireCompanyUser(principal);
-        ensureSameCompany(me, id);
+        requireManageableStaffPeer(me, id);
         UserResponse user = UserResponse.fromDomain(userService.updateDepartment(id, request.getDepartment()));
         return ResponseEntity.ok(ApiResponse.success(user, "Updated user department successfully"));
     }
@@ -96,7 +100,7 @@ public class CompanyManagementController {
     @DeleteMapping("/staff/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStaff(@PathVariable UUID id, Principal principal) {
         User me = requireCompanyUser(principal);
-        ensureSameCompany(me, id);
+        requireManageableStaffPeer(me, id);
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Deleted user successfully"));
     }
@@ -152,14 +156,16 @@ public class CompanyManagementController {
         return me;
     }
 
-    private void ensureSameCompany(User me, UUID targetUserId) {
+    private void requireManageableStaffPeer(User me, UUID targetUserId) {
         if (me.getId().equals(targetUserId)) {
-            // không cho tự khóa/xóa chính mình qua UI staff
             throw new AccessDeniedException("You cannot modify your own account here");
         }
         User target = userService.getUserById(targetUserId);
         if (target.getCompanyId() == null || !target.getCompanyId().equals(me.getCompanyId())) {
             throw new AccessDeniedException("Access denied: user does not belong to your company");
+        }
+        if (target.getRole() != Role.HR && target.getRole() != Role.COMPANY) {
+            throw new AccessDeniedException("Access denied: only HR and company accounts can be managed here");
         }
     }
 }

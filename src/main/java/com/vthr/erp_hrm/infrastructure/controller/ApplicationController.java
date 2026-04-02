@@ -11,6 +11,7 @@ import com.vthr.erp_hrm.infrastructure.controller.request.BulkStatusUpdateReques
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import com.vthr.erp_hrm.infrastructure.storage.FileStorageService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import jakarta.validation.Valid;
@@ -81,10 +82,7 @@ public class ApplicationController {
             Pageable pageable,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireRecruiterForJobTopic(userId, role, jobId);
         Page<ApplicationResponse> apps = applicationService.getApplicationsByJobId(jobId, pageable)
                 .map(this::mapAndSignUrl);
@@ -97,10 +95,7 @@ public class ApplicationController {
             @PathVariable UUID jobId,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireRecruiterForJobTopic(userId, role, jobId);
         java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> apps = applicationService
                 .getKanbanApplications(jobId);
@@ -146,10 +141,7 @@ public class ApplicationController {
             @PathVariable UUID id,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         var list = applicationService.getApplicationStageHistory(id, userId, role).stream()
                 .map(com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse::fromDomain)
                 .toList();
@@ -162,10 +154,7 @@ public class ApplicationController {
             @PathVariable UUID id,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         var list = applicationService.getApplicationStageHistory(id, userId, role).stream()
                 .map(com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse::fromDomain)
                 .toList();
@@ -217,10 +206,7 @@ public class ApplicationController {
             Authentication authentication
     ) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireParticipantForMessaging(userId, role, id);
         var eval = aiEvaluationRepository.findByApplicationId(id).orElse(null);
         return ResponseEntity.ok(ApiResponse.success(eval, "Fetched AI evaluation"));

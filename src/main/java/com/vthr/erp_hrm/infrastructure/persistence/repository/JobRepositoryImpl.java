@@ -2,6 +2,7 @@ package com.vthr.erp_hrm.infrastructure.persistence.repository;
 
 import com.vthr.erp_hrm.core.model.Job;
 import com.vthr.erp_hrm.core.model.JobStatus;
+import com.vthr.erp_hrm.core.model.PublicJobFilterOptions;
 import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.JobEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.mapper.JobMapper;
@@ -35,12 +36,42 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     @Override
-    public Page<Job> findOpenJobsWithOptionalKeyword(String keyword, Pageable pageable) {
-        if (keyword == null || keyword.isBlank()) {
-            return findByStatus(JobStatus.OPEN, pageable);
+    public Page<Job> findOpenJobsSearch(
+            String q,
+            String city,
+            String industry,
+            String jobType,
+            String level,
+            String skill,
+            Pageable pageable) {
+        return jobJpaRepository.searchOpenJobs(
+                JobStatus.OPEN.name(),
+                nz(q),
+                nz(city),
+                nz(industry),
+                nz(jobType),
+                nz(level),
+                nz(skill),
+                pageable
+        ).map(JobMapper::toDomain);
+    }
+
+    @Override
+    public PublicJobFilterOptions findDistinctFilterOptionsForOpenJobs() {
+        String st = JobStatus.OPEN.name();
+        return new PublicJobFilterOptions(
+                jobJpaRepository.findDistinctCitiesByStatus(st),
+                jobJpaRepository.findDistinctIndustriesByStatus(st),
+                jobJpaRepository.findDistinctJobTypesByStatus(st),
+                jobJpaRepository.findDistinctLevelsByStatus(st)
+        );
+    }
+
+    private static String nz(String s) {
+        if (s == null || s.isBlank()) {
+            return "";
         }
-        String q = keyword.trim();
-        return jobJpaRepository.findByStatusAndKeyword(JobStatus.OPEN.name(), q, pageable).map(JobMapper::toDomain);
+        return s.trim();
     }
 
     @Override
@@ -51,6 +82,11 @@ public class JobRepositoryImpl implements JobRepository {
     @Override
     public Page<Job> findByCompanyId(UUID companyId, Pageable pageable) {
         return jobJpaRepository.findByCompanyId(companyId, pageable).map(JobMapper::toDomain);
+    }
+
+    @Override
+    public Page<Job> findByCompanyIdAndCreatedBy(UUID companyId, UUID createdBy, Pageable pageable) {
+        return jobJpaRepository.findByCompanyIdAndCreatedBy(companyId, createdBy, pageable).map(JobMapper::toDomain);
     }
 
     @Override

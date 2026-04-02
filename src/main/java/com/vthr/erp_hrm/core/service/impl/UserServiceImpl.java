@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -60,6 +61,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public Page<User> getUsersByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable) {
         return userRepository.findByCompanyIdAndRole(companyId, role, pageable);
+    }
+
+    @Override
+    public Page<User> getUsersByCompanyIdAndRolesIn(UUID companyId, Collection<Role> roles, Pageable pageable) {
+        return userRepository.findByCompanyIdAndRoleIn(companyId, roles, pageable);
     }
 
     @Override

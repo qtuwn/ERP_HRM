@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +30,7 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Override
     @Transactional
-    public Resume uploadMyResume(UUID userId, MultipartFile file, String title, Boolean makeDefault) throws IOException {
+    public Resume uploadMyResume(UUID userId, MultipartFile file, String title, Boolean makeDefault) {
         requireUserExists(userId);
         String normalizedTitle = (title == null || title.isBlank()) ? "CV" : title.trim();
         if (normalizedTitle.length() > 120) {

@@ -41,5 +41,13 @@ export function QuillEditor({ value, onChange, placeholder = '' }) {
     }
   }, [value])
 
-  return <div className="bg-white border border-gray-300 rounded" style={{ height: 200 }} ref={containerRef} />
+  return (
+    <div className="w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-300 bg-white dark:border-slate-700">
+      <div
+        ref={containerRef}
+        className="quill-host [&_.ql-container]:max-w-full [&_.ql-editor]:max-w-full [&_.ql-editor]:break-words [&_.ql-editor]:[overflow-wrap:anywhere] [&_.ql-toolbar]:flex-wrap"
+        style={{ minHeight: 200 }}
+      />
+    </div>
+  )
 }

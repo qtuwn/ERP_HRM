@@ -127,6 +127,35 @@ class ChatServiceImplRateLimitTest {
     }
 
     @Test
+    void sendMessage_blankContent_shouldThrowBeforeSave() {
+        UUID appId = UUID.randomUUID();
+        UUID senderId = UUID.randomUUID();
+
+        doNothing().when(applicationAccessService).requireParticipantForMessaging(senderId, Role.CANDIDATE, appId);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                chatService.sendMessage(appId, senderId, Role.CANDIDATE, "   ")
+        );
+        assertEquals("Content cannot be empty", ex.getMessage());
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void sendMessage_tooLong_shouldThrowBeforeSave() {
+        UUID appId = UUID.randomUUID();
+        UUID senderId = UUID.randomUUID();
+        String longContent = "x".repeat(2001);
+
+        doNothing().when(applicationAccessService).requireParticipantForMessaging(senderId, Role.CANDIDATE, appId);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                chatService.sendMessage(appId, senderId, Role.CANDIDATE, longContent)
+        );
+        assertEquals("Message too long", ex.getMessage());
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
     void sendMessage_shouldStillEmitRealtimePayloadThatContainsSavedMessage() {
         UUID appId = UUID.randomUUID();
         UUID senderId = UUID.randomUUID();

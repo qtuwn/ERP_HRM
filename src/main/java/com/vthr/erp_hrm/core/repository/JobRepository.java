@@ -2,6 +2,7 @@ package com.vthr.erp_hrm.core.repository;
 
 import com.vthr.erp_hrm.core.model.Job;
 import com.vthr.erp_hrm.core.model.JobStatus;
+import com.vthr.erp_hrm.core.model.PublicJobFilterOptions;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,12 +16,25 @@ public interface JobRepository {
 
     Page<Job> findByStatus(JobStatus status, Pageable pageable);
 
-    /** Từ khóa null hoặc rỗng → chỉ lọc theo status OPEN (qua findByStatus). */
-    Page<Job> findOpenJobsWithOptionalKeyword(String keyword, Pageable pageable);
+    /**
+     * Việc làm public OPEN. Tham số rỗng = bỏ lọc theo trường đó.
+     */
+    Page<Job> findOpenJobsSearch(
+            String q,
+            String city,
+            String industry,
+            String jobType,
+            String level,
+            String skill,
+            Pageable pageable);
+
+    PublicJobFilterOptions findDistinctFilterOptionsForOpenJobs();
 
     Page<Job> findByDepartment(String department, Pageable pageable);
 
     Page<Job> findByCompanyId(java.util.UUID companyId, Pageable pageable);
+
+    Page<Job> findByCompanyIdAndCreatedBy(UUID companyId, UUID createdBy, Pageable pageable);
 
     java.util.List<Job> findByStatusAndExpiresAtBefore(String status, java.time.ZonedDateTime expiresAt);
 

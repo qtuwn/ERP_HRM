@@ -5,6 +5,7 @@ import com.vthr.erp_hrm.core.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,8 @@ public interface UserService {
     Page<User> getUsersByCompanyId(UUID companyId, Pageable pageable);
 
     Page<User> getUsersByCompanyIdAndRole(UUID companyId, Role role, Pageable pageable);
+
+    Page<User> getUsersByCompanyIdAndRolesIn(UUID companyId, Collection<Role> roles, Pageable pageable);
 
     Page<User> getUsersByCompanyIdAndDepartmentId(UUID companyId, UUID departmentId, Pageable pageable);
 

@@ -1,12 +1,12 @@
 package com.vthr.erp_hrm.infrastructure.controller;
 
 import com.vthr.erp_hrm.core.model.Job;
-import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.JobService;
 import com.vthr.erp_hrm.core.service.UserService;
 import com.vthr.erp_hrm.infrastructure.controller.request.JobCreateRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.JobUpdateRequest;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
+import com.vthr.erp_hrm.infrastructure.controller.response.JobFilterOptionsResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.JobResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -32,9 +31,28 @@ public class JobController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<JobResponse>>> getOpenJobs(
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String industry,
+            @RequestParam(required = false) String jobType,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String skill,
             Pageable pageable) {
-        Page<JobResponse> jobs = jobService.getOpenJobs(q, pageable).map(JobResponse::fromDomain);
+        Page<JobResponse> jobs = jobService
+                .getOpenJobs(q, city, industry, jobType, level, skill, pageable)
+                .map(JobResponse::fromDomain);
         return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched open jobs successfully"));
+    }
+
+    @GetMapping("/filter-options")
+    public ResponseEntity<ApiResponse<JobFilterOptionsResponse>> getOpenJobFilterOptions() {
+        var o = jobService.getOpenJobFilterOptions();
+        JobFilterOptionsResponse body = JobFilterOptionsResponse.builder()
+                .cities(o.cities())
+                .industries(o.industries())
+                .jobTypes(o.jobTypes())
+                .levels(o.levels())
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(body, "Fetched job filter options"));
     }
 
     @GetMapping("/{id}")
@@ -45,7 +63,7 @@ public class JobController {
 
     // HR/Admin APIs
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<JobResponse>>> getAllJobs(Pageable pageable) {
         Page<JobResponse> jobs = jobService.getAllJobs(pageable).map(JobResponse::fromDomain);
         return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched all jobs successfully"));
@@ -62,21 +80,13 @@ public class JobController {
         if (authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_HR"))) {
             com.vthr.erp_hrm.core.model.User userDetails = userService.getUserById(userId);
-            String userDepartment = userDetails.getDepartment();
-
-            if (userDepartment != null && !userDepartment.isBlank()) {
-                Page<JobResponse> jobs = jobService.getJobsByDepartment(userDepartment, pageable)
-                        .map(JobResponse::fromDomain);
-                return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched HR department jobs successfully"));
+            if (userDetails.getCompanyId() == null) {
+                return ResponseEntity.ok(ApiResponse.success(Page.empty(pageable), "No jobs found"));
             }
-
-            if (userDetails.getCompanyId() != null) {
-                Page<JobResponse> jobs = jobService.getJobsByCompanyId(userDetails.getCompanyId(), pageable)
-                        .map(JobResponse::fromDomain);
-                return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched company jobs successfully"));
-            }
-
-            return ResponseEntity.ok(ApiResponse.success(Page.empty(pageable), "No jobs found"));
+            Page<JobResponse> jobs = jobService
+                    .getJobsByCompanyIdAndCreatedBy(userDetails.getCompanyId(), userId, pageable)
+                    .map(JobResponse::fromDomain);
+            return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched HR own jobs successfully"));
         }
 
         if (authentication.getAuthorities().stream()
@@ -110,8 +120,10 @@ public class JobController {
 
         if (authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_HR"))) {
+            if (userDetails.getCompanyId() == null) {
+                throw new RuntimeException("HR account is missing companyId");
+            }
             String userDepartment = userDetails.getDepartment();
-
             if (userDepartment != null && !userDepartment.isBlank()) {
                 if (request.getDepartment() != null && !request.getDepartment().isBlank() &&
                         !userDepartment.equalsIgnoreCase(request.getDepartment())) {
@@ -238,19 +250,19 @@ public class JobController {
             throw new RuntimeException("Access denied: job does not belong to your company");
         }
 
-        String userDepartment = userDetails.getDepartment();
-        if (userDepartment != null && !userDepartment.isBlank()) {
-            String jobDepartment = existingJob.getDepartment();
-            if (jobDepartment != null && userDepartment.equalsIgnoreCase(jobDepartment)) {
-                return;
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR"))) {
+            if (userDetails.getCompanyId() == null
+                    || existingJob.getCompanyId() == null
+                    || !userDetails.getCompanyId().equals(existingJob.getCompanyId())) {
+                throw new RuntimeException("Access denied: job does not belong to your company");
             }
-        }
-
-        if (userDetails.getCompanyId() != null &&
-                userDetails.getCompanyId().equals(existingJob.getCompanyId())) {
+            if (existingJob.getCreatedBy() == null || !existingJob.getCreatedBy().equals(userId)) {
+                throw new RuntimeException("Access denied: you can only manage jobs you created");
+            }
             return;
         }
 
-        throw new RuntimeException("Access denied: you can only manage jobs in your department or company");
+        throw new RuntimeException("Access denied");
     }
 }

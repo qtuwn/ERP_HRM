@@ -19,16 +19,26 @@ const ForgotPasswordConfirmPage = lazy(() =>
 )
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })))
+const ResumeLibraryPage = lazy(() =>
+  import('./pages/ResumeLibraryPage.jsx').then((m) => ({ default: m.ResumeLibraryPage }))
+)
 const CandidateApplicationsPage = lazy(() =>
   import('./pages/CandidateApplicationsPage.jsx').then((m) => ({ default: m.CandidateApplicationsPage }))
 )
 const ApplyPage = lazy(() => import('./pages/ApplyPage.jsx').then((m) => ({ default: m.ApplyPage })))
+const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx').then((m) => ({ default: m.MessagesPage })))
+const NotificationsPage = lazy(() =>
+  import('./pages/NotificationsPage.jsx').then((m) => ({ default: m.NotificationsPage }))
+)
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage })))
 const JobsManagementPage = lazy(() =>
   import('./pages/JobsManagementPage.jsx').then((m) => ({ default: m.JobsManagementPage }))
 )
 const KanbanPage = lazy(() => import('./pages/KanbanPage.jsx').then((m) => ({ default: m.KanbanPage })))
+const RecruiterMessagesPage = lazy(() =>
+  import('./pages/RecruiterMessagesPage.jsx').then((m) => ({ default: m.RecruiterMessagesPage }))
+)
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage.jsx').then((m) => ({ default: m.AdminUsersPage })))
 const AdminCompaniesPage = lazy(() =>
   import('./pages/AdminCompaniesPage.jsx').then((m) => ({ default: m.AdminCompaniesPage }))
@@ -65,9 +75,26 @@ export default function App() {
         <Route path="/jobs/:id" element={withSuspense(<JobDetailPage />)} />
         <Route path="/profile" element={<RequireAuth>{withSuspense(<ProfilePage />)}</RequireAuth>} />
         <Route
+          path="/profile/resumes"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['CANDIDATE']}>{withSuspense(<ResumeLibraryPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/candidate/applications"
           element={<RequireAuth>{withSuspense(<CandidateApplicationsPage />)}</RequireAuth>}
         />
+        <Route
+          path="/messages"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['CANDIDATE']}>{withSuspense(<MessagesPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route path="/notifications" element={<RequireAuth>{withSuspense(<NotificationsPage />)}</RequireAuth>} />
         <Route path="/jobs/:jobId/apply" element={<RequireAuth>{withSuspense(<ApplyPage />)}</RequireAuth>} />
       </Route>
 
@@ -77,6 +104,16 @@ export default function App() {
           element={
             <RequireAuth>
               <RequireRole roles={['HR', 'ADMIN', 'COMPANY']}>{withSuspense(<DashboardPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard/messages"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['HR', 'ADMIN', 'COMPANY']}>
+                {withSuspense(<RecruiterMessagesPage />)}
+              </RequireRole>
             </RequireAuth>
           }
         />

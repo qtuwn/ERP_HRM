@@ -7,7 +7,6 @@ import { Eye, Info, Loader2, Mail, MessageSquare, Radio, X } from 'lucide-react'
 
 const LANES = [
   { id: 'APPLIED', title: 'Applied' },
-  { id: 'AI_SCREENING', title: 'AI Screening' },
   { id: 'HR_REVIEW', title: 'HR Review' },
   { id: 'INTERVIEW', title: 'Interview' },
   { id: 'OFFER', title: 'Offer' },
@@ -46,6 +45,12 @@ function parseSkills(value) {
       .filter(Boolean)
   }
   return []
+}
+
+/** Trạng thái AI_SCREENING gom vào cột Applied (không còn cột riêng). */
+function kanbanLaneForStatus(status) {
+  if (status === 'AI_SCREENING') return 'APPLIED'
+  return status
 }
 
 const KANBAN_WS_EVENTS = new Set(['application:new', 'application:stage_changed'])
@@ -173,7 +178,7 @@ export function KanbanPage() {
     const map = new Map()
     LANES.forEach((l) => map.set(l.id, []))
     for (const a of applications) {
-      const key = a.status
+      const key = kanbanLaneForStatus(a.status)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(a)
     }
@@ -410,9 +415,19 @@ export function KanbanPage() {
 
                         <button
                           type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center ml-auto bg-blue-50 px-2 py-1 rounded"
-                          title="Chat (todo)"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            window.dispatchEvent(
+                              new CustomEvent('open-chat', {
+                                detail: {
+                                  applicationId: app.id,
+                                  applicationTitle: `Chat — ${app.candidateName || 'Ứng viên'}`.trim(),
+                                },
+                              })
+                            )
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center ml-auto bg-blue-50 px-2 py-1 rounded dark:bg-blue-950/40 dark:text-blue-300"
+                          title="Mở chat với ứng viên"
                         >
                           <MessageSquare className="h-3 w-3 mr-1" />
                           Chat

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
-import { getUser } from '../lib/storage.js'
+import { getUser, normalizeUserRole } from '../lib/storage.js'
 import { Eye, Pencil, Plus, RefreshCw, Trash2, CircleCheck, Ban } from 'lucide-react'
 import { QuillEditor } from '../components/QuillEditor.jsx'
 
@@ -55,6 +55,7 @@ const emptyForm = (department) => ({
 
 export function JobsManagementPage() {
   const user = useMemo(() => getUser(), [])
+  const userRole = useMemo(() => normalizeUserRole(user?.role), [user])
   const userDepartment = user?.department || ''
 
   const [jobs, setJobs] = useState([])
@@ -200,12 +201,16 @@ export function JobsManagementPage() {
   }
 
   return (
-    <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full min-w-0 max-w-full px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Quản lý tin tuyển dụng</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Tạo, chỉnh sửa, mở/đóng tuyển dụng và xóa các vị trí công việc của công ty bạn.
+            {userRole === 'COMPANY'
+              ? 'Tất cả tin tuyển của công ty (theo mã công ty trên hệ thống), không phụ thuộc tên hiển thị.'
+              : userRole === 'HR'
+                ? 'Chỉ các tin do tài khoản của bạn tạo, trong phạm vi công ty (theo mã công ty).'
+                : 'Tạo, chỉnh sửa, mở/đóng tuyển dụng và xóa tin (ADMIN: danh sách theo API /department — toàn hệ thống nếu không lọc).'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -228,15 +233,15 @@ export function JobsManagementPage() {
         </div>
       </div>
 
-      <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {loading ? (
           <div className="p-6">
             <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách job...</p>
           </div>
         ) : (
           <>
-            <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
+            <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain">
+              <table className="w-full min-w-[720px] table-fixed divide-y divide-slate-200 dark:divide-slate-700">
                 <thead className="bg-slate-50 dark:bg-slate-800/80">
                   <tr>
                     <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -374,7 +379,7 @@ export function JobsManagementPage() {
           <div className="flex min-h-screen items-center justify-center px-4 py-16">
             <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
 
-            <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl dark:bg-slate-900">
+            <div className="relative max-h-[90vh] w-full min-w-0 max-w-3xl overflow-y-auto overflow-x-hidden rounded-xl bg-white shadow-xl dark:bg-slate-900">
               <div className="sticky top-0 bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-4 text-white">
                 <h2 className="text-xl font-bold">
                   {editingId ? 'Cập nhật tin tuyển dụng' : 'Tạo tin tuyển dụng mới'}
@@ -384,10 +389,13 @@ export function JobsManagementPage() {
                 </p>
               </div>
 
-              <div className="px-6 pt-6 pb-4">
-                <div className="flex items-center justify-between">
+              <div className="min-w-0 px-6 pb-4 pt-6">
+                <div className="flex min-w-0 items-center justify-between gap-1">
                   {[1, 2, 3].map((s) => (
-                    <div key={s} className={['flex-1 flex items-center', s < 3 ? 'mr-2' : ''].join(' ')}>
+                    <div
+                      key={s}
+                      className={['flex min-w-0 flex-1 items-center', s < 3 ? 'mr-1 sm:mr-2' : ''].join(' ')}
+                    >
                       <div
                         className={[
                           'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition',
@@ -401,7 +409,7 @@ export function JobsManagementPage() {
                       {s < 3 ? (
                         <div
                           className={[
-                            'flex-1 h-1 mx-2 rounded transition',
+                            'mx-1 h-1 min-w-[8px] flex-1 rounded transition sm:mx-2',
                             s < step ? 'bg-[#2563eb]' : 'bg-gray-200 dark:bg-slate-700',
                           ].join(' ')}
                         />
@@ -416,7 +424,7 @@ export function JobsManagementPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-6 space-y-6">
+              <div className="min-w-0 space-y-6 px-6 py-6">
                 {step === 1 ? (
                   <div className="space-y-5">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thông tin cơ bản</h3>
@@ -429,10 +437,10 @@ export function JobsManagementPage() {
                         onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                         type="text"
                         placeholder="Ví dụ: Senior Frontend Developer"
-                        className="mt-1 w-full px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent dark:bg-slate-950 dark:border-slate-700"
+                        className="mt-1 w-full min-w-0 max-w-full box-border px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent dark:bg-slate-950 dark:border-slate-700"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                           Ngành nghề
