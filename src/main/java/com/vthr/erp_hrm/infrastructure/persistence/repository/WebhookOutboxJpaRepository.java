@@ -22,11 +22,13 @@ public interface WebhookOutboxJpaRepository extends JpaRepository<WebhookOutboxE
             SELECT o FROM WebhookOutboxEntity o
             WHERE o.status IN :statuses
               AND o.nextAttemptAt <= :now
+              AND o.attempts < :maxAttempts
             ORDER BY o.createdAt ASC
             """)
     List<WebhookOutboxEntity> findDueForSending(
             @Param("statuses") List<WebhookOutboxStatus> statuses,
             @Param("now") ZonedDateTime now,
+            @Param("maxAttempts") int maxAttempts,
             Pageable pageable
     );
 }

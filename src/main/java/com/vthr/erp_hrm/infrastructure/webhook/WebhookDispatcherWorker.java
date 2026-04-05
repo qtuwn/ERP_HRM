@@ -1,5 +1,6 @@
 package com.vthr.erp_hrm.infrastructure.webhook;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.WebhookOutboxEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.repository.WebhookOutboxJpaRepository;
@@ -7,12 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 import java.time.Clock;
@@ -26,6 +26,8 @@ public class WebhookDispatcherWorker {
     private final WebhookOutboxJpaRepository repo;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final PlatformTransactionManager transactionManager;
+    private final RestClient webhookRestClient;
 
     @Value("${app.webhook.enabled:false}")
     private boolean enabled;
@@ -42,40 +44,22 @@ public class WebhookDispatcherWorker {
     @Value("${app.webhook.max-attempts:10}")
     private int maxAttempts;
 
-    @Value("${app.webhook.timeout-ms:3000}")
-    private int timeoutMs;
-
     @Scheduled(fixedDelayString = "${app.webhook.worker.delay-ms:2000}")
-    @Transactional
     public void dispatchDue() {
         if (!enabled) return;
         if (webhookUrl == null || webhookUrl.isBlank()) return;
 
         ZonedDateTime now = ZonedDateTime.now(clock);
-        List<WebhookOutboxEntity> due = repo.findDueForSending(
-                List.of(WebhookOutboxStatus.PENDING, WebhookOutboxStatus.FAILED),
-                now,
-                PageRequest.of(0, Math.max(1, batchSize))
-        );
+        List<WebhookOutboxEntity> due = claimDueItems(now);
 
         if (due.isEmpty()) return;
 
-        RestClient client = buildClient();
-
         for (WebhookOutboxEntity item : due) {
-            if (item.getAttempts() >= maxAttempts) {
-                continue;
-            }
-
-            item.setStatus(WebhookOutboxStatus.SENDING);
-            item.setAttempts(item.getAttempts() + 1);
-            item.setLastError(null);
-            repo.save(item);
-
             try {
-                String body = objectMapper.writeValueAsString(new WebhookEnvelope(item.getEventType(), item.getPayloadJson()));
+                JsonNode payload = objectMapper.readTree(item.getPayloadJson());
+                String body = objectMapper.writeValueAsString(new WebhookEnvelope(item.getEventType(), payload));
 
-                client.post()
+                webhookRestClient.post()
                         .uri(webhookUrl)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-Event-Type", item.getEventType())
@@ -98,14 +82,28 @@ public class WebhookDispatcherWorker {
         }
     }
 
-    private RestClient buildClient() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(timeoutMs);
-        factory.setReadTimeout(timeoutMs);
-        return RestClient.builder()
-                .requestFactory(factory)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
+    private List<WebhookOutboxEntity> claimDueItems(ZonedDateTime now) {
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            List<WebhookOutboxEntity> due = repo.findDueForSending(
+                    List.of(WebhookOutboxStatus.PENDING, WebhookOutboxStatus.FAILED),
+                    now,
+                    maxAttempts,
+                    PageRequest.of(0, Math.max(1, batchSize))
+            );
+
+            if (due.isEmpty()) {
+                return List.of();
+            }
+
+            for (WebhookOutboxEntity item : due) {
+                item.setStatus(WebhookOutboxStatus.SENDING);
+                item.setAttempts(item.getAttempts() + 1);
+                item.setLastError(null);
+            }
+
+            repo.saveAll(due);
+            return due;
+        });
     }
 
     private static long backoffSeconds(int attempts) {
@@ -115,7 +113,7 @@ public class WebhookDispatcherWorker {
         return Math.max(2L, delay);
     }
 
-    record WebhookEnvelope(String eventType, Object payload) {
+    record WebhookEnvelope(String eventType, JsonNode payload) {
     }
 }
 
