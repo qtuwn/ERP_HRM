@@ -24,27 +24,23 @@ export function ProfilePage() {
 
   useEffect(() => {
     let alive = true
-    async function load() {
-      setProfileLoading(true)
+    async function loadNotifications() {
+      setNotificationsLoading(true)
       try {
-        const res = await api.get('/api/users/me')
-        const u = res?.data
-        if (!alive || !u) return
-        setUser(u)
-        persistUser(u)
-        setFullName(u.fullName || '')
-        setPhone(u.phone || '')
-      } catch {
-        // ignore (fallback to localStorage user)
+        const res = await api.get('/api/notifications')
+        if (alive) {
+          setNotifications(res?.data || [])
+        }
+      } catch (err) {
+        console.error('Failed to load notifications:', err)
       } finally {
-        if (alive) setProfileLoading(false)
+        if (alive) setNotificationsLoading(false)
       }
     }
-    load()
+    loadNotifications()
     return () => {
       alive = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function saveProfile(e) {
