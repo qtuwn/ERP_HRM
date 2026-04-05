@@ -1,6 +1,7 @@
 package com.vthr.erp_hrm.infrastructure.email;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.vthr.erp_hrm.core.model.EmailStatus;
 import com.vthr.erp_hrm.infrastructure.persistence.entity.EmailLogEntity;
 import com.vthr.erp_hrm.infrastructure.persistence.repository.EmailLogRepository;
@@ -30,6 +31,7 @@ public class EmailWorker {
     private final ObjectMapper objectMapper;
 
     private static final String EMAIL_QUEUE = "email_notifications";
+    private static final String EMAIL_DLQ = "email_dlq";
 
     @Value("${app.mail.from:noreply@vthr.com}")
     private String fromEmail;
@@ -40,59 +42,61 @@ public class EmailWorker {
     @Scheduled(fixedDelay = 5000)
     public void processEmailQueue() {
         try {
-            // Block temporarily for 2 seconds looking for items
             String jsonPayload = redisTemplate.opsForList().rightPop(EMAIL_QUEUE, 2, TimeUnit.SECONDS);
 
             if (jsonPayload != null) {
                 EmailPayload payload = objectMapper.readValue(jsonPayload, EmailPayload.class);
-                log.info("Processing email queue payload for {}", payload.getRecipient());
-
-                // Lookup DB
                 EmailLogEntity logEntity = emailLogRepository.findById(payload.getLogId()).orElse(null);
 
                 try {
-                    String htmlBody = mailRenderingService.renderEmail(payload.getTemplateName(), payload.getVariables());
-
-                    MimeMessage message = javaMailSender.createMimeMessage();
-                    MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-                    helper.setFrom(fromEmail, fromName);
-                    helper.setTo(payload.getRecipient());
-                    helper.setSubject(payload.getSubject());
-                    helper.setText(htmlBody, true); // true = isHtml
-
-                    log.info("About to send email via SMTP: to='{}' subject='{}' template='{}'",
-                            payload.getRecipient(), payload.getSubject(), payload.getTemplateName());
-                    javaMailSender.send(message);
-                    log.info("MailSender.send completed: to='{}' subject='{}'", payload.getRecipient(), payload.getSubject());
+                    sendEmail(payload);
 
                     if (logEntity != null) {
                         logEntity.setStatus(EmailStatus.SENT);
                         logEntity.setSentAt(ZonedDateTime.now());
                         emailLogRepository.save(logEntity);
                     }
-                    log.info("Successfully dispatched email: {}", payload.getSubject());
+                    log.info("Email sent: to='{}' subject='{}'", payload.getRecipient(), payload.getSubject());
 
-                } catch (MessagingException e) {
-                    log.error("MessagingException while sending email (full stacktrace). to='{}' subject='{}'",
-                            payload.getRecipient(), payload.getSubject(), e);
-                    if (logEntity != null) {
-                        logEntity.setStatus(EmailStatus.FAILED);
-                        logEntity.setErrorMessage(e.getMessage());
-                        emailLogRepository.save(logEntity);
-                    }
-                    // Optionally push back to queue or a Dead Letter Queue... keeping it simple for now.
                 } catch (Exception e) {
-                    log.error("Unexpected exception while sending email (full stacktrace). to='{}' subject='{}'",
-                            payload.getRecipient(), payload.getSubject(), e);
-                    if (logEntity != null) {
-                        logEntity.setStatus(EmailStatus.FAILED);
-                        logEntity.setErrorMessage(e.getMessage());
-                        emailLogRepository.save(logEntity);
-                    }
+                    handleSendError(payload, logEntity, e);
                 }
             }
         } catch (Exception e) {
-            log.error("Error interacting with Redis Email Queue worker: {}", e.getMessage(), e);
+            log.error("Error in email queue worker: {}", e.getMessage());
+        }
+    }
+
+    private void sendEmail(EmailPayload payload) throws Exception {
+        String htmlBody = mailRenderingService.renderEmail(payload.getTemplateName(), payload.getVariables());
+
+        MimeMessage message = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(payload.getRecipient());
+        helper.setSubject(payload.getSubject());
+        helper.setText(htmlBody, true);
+
+        javaMailSender.send(message);
+    }
+
+    private void handleSendError(EmailPayload payload, EmailLogEntity logEntity, Exception e) {
+        String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        log.warn("Failed to send email: to='{}' subject='{}' error='{}'", 
+                payload.getRecipient(), payload.getSubject(), errorMsg);
+
+        if (logEntity != null) {
+            logEntity.setStatus(EmailStatus.FAILED);
+            logEntity.setErrorMessage(errorMsg);
+            emailLogRepository.save(logEntity);
+        }
+
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+            redisTemplate.opsForList().leftPush(EMAIL_DLQ, jsonPayload);
+            log.debug("Pushed failed email to dead-letter queue: to='{}'", payload.getRecipient());
+        } catch (JsonProcessingException ex) {
+            log.error("Failed to serialize payload for DLQ: {}", ex.getMessage());
         }
     }
 }
