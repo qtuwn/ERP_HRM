@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -25,31 +27,74 @@ public class EmailQueueService {
 
     public void enqueueEmail(String recipient, String subject, String templateName, Map<String, Object> variables) {
         try {
-            // First, create the PENDING log entry
-            EmailLogEntity logEntity = new EmailLogEntity();
-            logEntity.setRecipient(recipient);
-            logEntity.setSubject(subject);
-            logEntity.setTemplateName(templateName);
-            logEntity.setStatus(EmailStatus.PENDING);
-            logEntity = emailLogRepository.save(logEntity);
-
-            // Construct payload mapping to the Log ID
-            EmailPayload payload = EmailPayload.builder()
-                    .logId(logEntity.getId())
-                    .recipient(recipient)
-                    .subject(subject)
-                    .templateName(templateName)
-                    .variables(variables)
-                    .build();
-
-            String json = objectMapper.writeValueAsString(payload);
-            redisTemplate.opsForList().leftPush(EMAIL_QUEUE, json);
-            log.info("Enqueued email message for {} with template {} (Log ID Context: {})", recipient, templateName, logEntity.getId());
-            
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize EmailPayload: {}", e.getMessage(), e);
+            EmailLogEntity logEntity = createAndSaveLogEntry(recipient, subject, templateName);
+            pushToQueue(logEntity.getId(), recipient, subject, templateName, variables);
+            log.debug("Enqueued email: to='{}' subject='{}'", recipient, subject);
         } catch (Exception e) {
-            log.error("Failed to push to Redis queue: {}", e.getMessage(), e);
+            handleEnqueueError(recipient, subject, e);
         }
     }
+
+    public void enqueueBatchEmails(List<EmailRequest> requests) {
+        List<EmailLogEntity> logEntities = new ArrayList<>();
+        
+        // Batch save log entities first
+        for (EmailRequest request : requests) {
+            EmailLogEntity logEntity = new EmailLogEntity();
+            logEntity.setRecipient(request.recipient());
+            logEntity.setSubject(request.subject());
+            logEntity.setTemplateName(request.templateName());
+            logEntity.setStatus(EmailStatus.PENDING);
+            logEntities.add(logEntity);
+        }
+        logEntities = emailLogRepository.saveAll(logEntities);
+
+        // Then batch push to queue
+        int successful = 0;
+        for (int i = 0; i < logEntities.size(); i++) {
+            try {
+                EmailLogEntity logEntity = logEntities.get(i);
+                EmailRequest request = requests.get(i);
+                pushToQueue(logEntity.getId(), request.recipient(), request.subject(), request.templateName(), request.variables());
+                successful++;
+            } catch (Exception e) {
+                log.warn("Failed to queue batch email index {}: {}", i, e.getMessage());
+            }
+        }
+        log.info("Batch email enqueued: {}/{} successful", successful, requests.size());
+    }
+
+    private EmailLogEntity createAndSaveLogEntry(String recipient, String subject, String templateName) {
+        EmailLogEntity logEntity = new EmailLogEntity();
+        logEntity.setRecipient(recipient);
+        logEntity.setSubject(subject);
+        logEntity.setTemplateName(templateName);
+        logEntity.setStatus(EmailStatus.PENDING);
+        return emailLogRepository.save(logEntity);
+    }
+
+    private void pushToQueue(Object logId, String recipient, String subject, String templateName, Map<String, Object> variables) throws JsonProcessingException {
+        EmailPayload payload = EmailPayload.builder()
+                .logId((java.util.UUID) logId)
+                .recipient(recipient)
+                .subject(subject)
+                .templateName(templateName)
+                .variables(variables)
+                .build();
+
+        String json = objectMapper.writeValueAsString(payload);
+        redisTemplate.opsForList().leftPush(EMAIL_QUEUE, json);
+    }
+
+    private void handleEnqueueError(String recipient, String subject, Exception e) {
+        String errorMsg = e instanceof JsonProcessingException ? "JSON serialization failed" : "Queue operation failed";
+        log.error("Failed to enqueue email: to='{}' subject='{}' error='{}'", recipient, subject, errorMsg);
+    }
+
+    public record EmailRequest(
+            String recipient,
+            String subject,
+            String templateName,
+            Map<String, Object> variables
+    ) {}
 }
