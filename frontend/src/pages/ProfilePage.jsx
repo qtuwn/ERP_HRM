@@ -51,20 +51,33 @@ export function ProfilePage() {
     e.preventDefault()
     setProfileError('')
     setProfileSuccess('')
+  
+    // Validation
+    if (!fullName?.trim()) {
+      setProfileError('Vui lòng nhập họ và tên.')
+      return
+    }
+    if (fullName.trim().length < 2) {
+      setProfileError('Họ và tên phải có ít nhất 2 ký tự.')
+      return
+    }
+  
     setProfileSubmitting(true)
     try {
       const res = await api.put('/api/users/me', {
-        fullName: fullName?.trim() || null,
+        fullName: fullName.trim(),
         phone: phone?.trim() || null,
       })
       const u = res?.data
       if (u) {
         setUser(u)
         persistUser(u)
+        setProfileSuccess('Cập nhật hồ sơ thành công.')
+      } else {
+        setProfileError('Không nhận được dữ liệu từ máy chủ.')
       }
-      setProfileSuccess('Cập nhật hồ sơ thành công.')
     } catch (err) {
-      setProfileError(err?.message || 'Cập nhật hồ sơ thất bại.')
+      setProfileError(err?.response?.data?.message || err?.message || 'Cập nhật hồ sơ thất bại.')
     } finally {
       setProfileSubmitting(false)
     }
