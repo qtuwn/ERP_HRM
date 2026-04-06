@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="color: #2563eb; margin-top: 0;">Thư mời Phỏng Vấn: [[${jobTitle}]]</h2>
+        <p>Chào <strong>[[${candidateName}]]</strong>,</p>
+        <p>Chúc mừng bạn đã xuất sắc vượt qua vòng lọc hồ sơ cho vị trí <strong>[[${jobTitle}]]</strong>.</p>
+        <p>Phòng Tuyển dụng trân trọng kính mời bạn tham gia buổi phỏng vấn với các thông tin chi tiết như sau:</p>
+        <div style="background: #f1f5f9; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>📅 Thời gian:</strong> [[${interviewDate}]]</p>
+            <p style="margin: 5px 0;"><strong>🏢 Hình thức:</strong> [[${interviewFormat}]]</p>
+            <p style="margin: 5px 0;"><strong>📍 Địa điểm / Link:</strong> [[${interviewLocation}]]</p>
+            <p style="margin: 5px 0;"><strong>📝 Ghi chú:</strong> [[${interviewNote}]]</p>
+        </div>
+        <p>Trân trọng,<br><strong>Phòng Tuyển dụng VTHR</strong></p>
+    </div>
+</body>
+</html>

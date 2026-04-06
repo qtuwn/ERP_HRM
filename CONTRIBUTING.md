@@ -1,5 +1,9 @@
 # Team Branching and PR Guide
 
+## Tài liệu kế hoạch & QA
+
+- **[Kế hoạch triển khai + checklist + unit test + manual test](docs/MASTER_PLAN_IMPLEMENTATION_QA.md)** (`docs/MASTER_PLAN_IMPLEMENTATION_QA.md`) — đồng bộ với `recruitment_platform_design.md`, `account_management_end_to_end.md`, `system_design_uml.md`, `rules.md`.
+
 ## Branching model
 
 - `main`: stable release-ready branch.

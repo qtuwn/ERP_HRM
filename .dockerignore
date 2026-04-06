@@ -1,4 +1,23 @@
-target
+# Git & IDE
 .git
-.idea
-.vscode
+.gitignore
+**/.idea
+**/.vscode
+
+# Build output (Docker tự build lại)
+target
+frontend/node_modules
+frontend/dist
+**/node_modules
+
+# Log / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Env (không đưa secrets vào image)
+.env
+.env.local
+
+# Tài liệu không cần trong image
+*.md
