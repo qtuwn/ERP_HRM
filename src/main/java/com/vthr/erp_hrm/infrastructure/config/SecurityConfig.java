@@ -35,25 +35,29 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs", "/api/jobs/**")
                         .permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/application-tasks/document-types")
+                        .permitAll()
                         .requestMatchers(
                                 "/", "/login", "/register",
                                 "/forbidden",
                                 "/verify-email", "/verify-otp",
                                 "/forgot-password", "/forgot-password/**",
                                 "/jobs", "/jobs/**",
-                                "/dashboard", "/jobs/*/kanban",
+                                "/dashboard", "/dashboard/**", "/jobs/*/kanban",
                                 "/admin/users",
+                                "/admin/analytics",
                                 "/company/staff",
-                                "/candidate/applications", "/profile",
+                                "/candidate/applications", "/candidate/applications/**",
+                                "/profile", "/profile/sessions",
                                 "/index.html",
                                 "/assets/**", "/favicon.svg", "/favicon.ico",
                                 "/css/**", "/js/**", "/images/**", "/error")
                         .permitAll()
-                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "HR", "COMPANY")
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("HR", "COMPANY")
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/applications/*/status")
-                        .hasAnyRole("ADMIN", "HR", "COMPANY")
+                        .hasAnyRole("HR", "COMPANY")
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/applications/bulk-reject")
-                        .hasAnyRole("ADMIN", "HR", "COMPANY")
+                        .hasAnyRole("HR", "COMPANY")
                         .requestMatchers("/api/applications/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

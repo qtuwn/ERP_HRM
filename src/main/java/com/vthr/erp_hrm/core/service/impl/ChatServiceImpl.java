@@ -1,6 +1,7 @@
 package com.vthr.erp_hrm.core.service.impl;
 
 import com.vthr.erp_hrm.core.model.Application;
+import com.vthr.erp_hrm.core.model.ApplicationStatus;
 import com.vthr.erp_hrm.core.model.Message;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.repository.ApplicationRepository;
@@ -44,6 +45,9 @@ public class ChatServiceImpl implements ChatService {
         }
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
+        if (application.getStatus() == ApplicationStatus.WITHDRAWN) {
+            throw new RuntimeException("Chat is closed for withdrawn applications");
+        }
 
         Message message = Message.builder()
                 .applicationId(applicationId)
@@ -88,6 +92,10 @@ public class ChatServiceImpl implements ChatService {
         try {
             applicationAccessService.requireParticipantForMessaging(senderId, senderRole, applicationId);
         } catch (RuntimeException e) {
+            return;
+        }
+        Application application = applicationRepository.findById(applicationId).orElse(null);
+        if (application != null && application.getStatus() == ApplicationStatus.WITHDRAWN) {
             return;
         }
         if (!chatRateLimitService.shouldAllowTyping(applicationId, senderId)) {

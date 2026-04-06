@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Briefcase, ClipboardList, LayoutDashboard, Menu, Moon, Sun, Users, X, Building2, Tags } from 'lucide-react'
+import {
+  Briefcase,
+  ClipboardList,
+  LayoutDashboard,
+  Menu,
+  MessageCircle,
+  Moon,
+  Sun,
+  Users,
+  X,
+  Building2,
+  Tags,
+  BarChart3,
+} from 'lucide-react'
 import { clearSession, getUser, normalizeUserRole } from '../lib/storage.js'
 import { applyTheme, getStoredTheme } from '../lib/theme.js'
 import LogoImage from '../assets/LOGO.png'
+import { ChatWidget } from './ChatWidget.jsx'
 
 function isKanbanPath(path) {
   return /\/jobs\/[^/]+\/kanban$/.test(path)
@@ -72,11 +86,13 @@ export function AdminShell() {
 
   const path = location.pathname
   const navDashboard = path === '/dashboard'
+  const navRecruiterMessages = path === '/dashboard/messages'
   const navJobsManagement = path.startsWith('/jobs/management')
   const navApplicationTracking = isKanbanPath(path)
   const navAdminUsers = path === '/admin/users'
   const navAdminCompanies = path === '/admin/companies'
   const navAdminSkills = path === '/admin/master-data/skills'
+  const navAdminAnalytics = path === '/admin/analytics'
   const navCompanyStaff = path === '/company/staff'
 
   return (
@@ -100,7 +116,7 @@ export function AdminShell() {
           aria-label="Điều hướng quản trị"
         >
           <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-4 dark:border-slate-800">
-            <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
+            <Link to="/" className="flex min-w-0 items-center gap-2">
               <img src={LogoImage} alt="VTHR Logo" className="h-8 w-auto shrink-0 object-contain" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">VTHR Careers Hub</p>
@@ -119,23 +135,43 @@ export function AdminShell() {
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            <NavLink to="/dashboard" className={navItemClass(navDashboard)}>
-              <LayoutDashboard className={iconClass(navDashboard)} />
-              <span>Tổng quan</span>
-            </NavLink>
+            {user && role === 'ADMIN' ? (
+              <NavLink to="/admin/analytics" className={navItemClass(navAdminAnalytics)}>
+                <BarChart3 className={iconClass(navAdminAnalytics)} />
+                <span>Thống kê tuyển dụng</span>
+              </NavLink>
+            ) : null}
+
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
+              <NavLink to="/dashboard" className={navItemClass(navDashboard)}>
+                <LayoutDashboard className={iconClass(navDashboard)} />
+                <span>Tổng quan</span>
+              </NavLink>
+            ) : null}
+
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
+              <NavLink to="/dashboard/messages" className={navItemClass(navRecruiterMessages)}>
+                <MessageCircle className={iconClass(navRecruiterMessages)} />
+                <span>Tin nhắn</span>
+              </NavLink>
+            ) : null}
 
             <NavLink to="/jobs/management" className={navItemClass(navJobsManagement)}>
               <Briefcase className={iconClass(navJobsManagement)} />
               <span>Quản lý tin tuyển</span>
             </NavLink>
 
-            <NavLink to="/jobs/management" className={navItemClass(navApplicationTracking)}>
-              <ClipboardList className={iconClass(navApplicationTracking)} />
-              <span>Theo dõi hồ sơ</span>
-            </NavLink>
-            <p className="px-3 pb-1 pt-0 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-              Mở từng tin → <span className="text-slate-600 dark:text-slate-400">Ứng viên (Kanban)</span>
-            </p>
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
+              <>
+                <NavLink to="/jobs/management" className={navItemClass(navApplicationTracking)}>
+                  <ClipboardList className={iconClass(navApplicationTracking)} />
+                  <span>Theo dõi hồ sơ</span>
+                </NavLink>
+                <p className="px-3 pb-1 pt-0 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
+                  Mở từng tin → <span className="text-slate-600 dark:text-slate-400">Ứng viên (Kanban)</span>
+                </p>
+              </>
+            ) : null}
 
             {user && role === 'ADMIN' ? (
               <>
@@ -176,7 +212,7 @@ export function AdminShell() {
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:pl-64">
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-            <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex h-14 min-w-0 items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
               <button
                 type="button"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900 lg:hidden"
@@ -186,7 +222,7 @@ export function AdminShell() {
                 <Menu className="h-4 w-4" />
               </button>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
                 {user ? (
                   <>
                     <div className="hidden text-sm text-slate-600 dark:text-slate-300 md:block">
@@ -212,11 +248,17 @@ export function AdminShell() {
             </div>
           </header>
 
-          <main id="admin-main" className="flex-1 scroll-mt-14" tabIndex={-1}>
+          <main
+            id="admin-main"
+            className="flex-1 min-w-0 max-w-full overflow-x-hidden scroll-mt-14"
+            tabIndex={-1}
+          >
             <Outlet />
           </main>
         </div>
       </div>
+
+      <ChatWidget />
     </div>
   )
 }

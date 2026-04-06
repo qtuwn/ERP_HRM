@@ -2,6 +2,7 @@ package com.vthr.erp_hrm.infrastructure.websocket;
 
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.ApplicationAccessService;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -31,6 +32,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private static final Pattern TOPIC_APPLICATION = Pattern.compile("^/topic/applications/([0-9a-fA-F-]{36})$");
     private static final Pattern TOPIC_JOB = Pattern.compile("^/topic/jobs/([0-9a-fA-F-]{36})$");
+    private static final Pattern TOPIC_NOTIFICATIONS = Pattern.compile("^/topic/notifications/([0-9a-fA-F-]{36})$");
 
     private final SecretKey secretKey;
     private final ApplicationAccessService applicationAccessService;
@@ -95,10 +97,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                     log.warn("STOMP SUBSCRIBE denied (bad user id): {}", dest);
                     return null;
                 }
-                Role role = auth.getAuthorities().stream()
-                        .findFirst()
-                        .map(a -> Role.fromString(a.getAuthority()))
-                        .orElse(Role.CANDIDATE);
+                Role role = SecurityRoleResolver.resolveRole(auth);
                 try {
                     Matcher mApp = TOPIC_APPLICATION.matcher(dest);
                     if (mApp.matches()) {
@@ -108,6 +107,14 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                     Matcher mJob = TOPIC_JOB.matcher(dest);
                     if (mJob.matches()) {
                         applicationAccessService.requireRecruiterForJobTopic(uid, role, UUID.fromString(mJob.group(1)));
+                        return message;
+                    }
+                    Matcher mNoti = TOPIC_NOTIFICATIONS.matcher(dest);
+                    if (mNoti.matches()) {
+                        UUID targetUserId = UUID.fromString(mNoti.group(1));
+                        if (!uid.equals(targetUserId) && role != Role.ADMIN) {
+                            throw new RuntimeException("Access denied");
+                        }
                         return message;
                     }
                     log.warn("STOMP SUBSCRIBE denied (unsupported destination): {}", dest);

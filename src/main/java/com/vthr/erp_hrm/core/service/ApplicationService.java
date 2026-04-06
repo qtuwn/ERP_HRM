@@ -22,7 +22,8 @@ public interface ApplicationService {
 
     Application updateApplicationStatus(UUID id, ApplicationStatus status, UUID changedBy, String note);
 
-    void bulkRejectApplications(java.util.List<UUID> applicationIds, UUID changedBy);
+    com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse bulkRejectApplications(
+            java.util.List<UUID> applicationIds, UUID changedBy);
 
     com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse bulkUpdateApplicationStatus(
             java.util.List<UUID> applicationIds,
@@ -36,5 +37,15 @@ public interface ApplicationService {
     com.vthr.erp_hrm.infrastructure.controller.response.CandidateApplicationDetailResponse getApplicationDetailForCandidate(
             UUID appId, UUID candidateId);
 
+    /** Ứng viên rút đơn (kiểm tra tin còn OPEN, chưa hết hạn, giai đoạn sớm, chưa có lịch PV). */
+    Application withdrawApplicationByCandidate(UUID applicationId, UUID candidateId);
+
     List<ApplicationStageHistory> getApplicationStageHistory(UUID applicationId, UUID userId, Role role);
+
+    /** HR/ADMIN/COMPANY: xem đủ ngữ cảnh ứng viên + PV + AI (không dùng cho candidate). */
+    com.vthr.erp_hrm.infrastructure.controller.response.RecruiterApplicationReviewResponse getApplicationReviewForRecruiter(
+            UUID applicationId, UUID userId, Role role);
+
+    /** Ghi chú nội bộ HR trên đơn; không đổi stage. */
+    Application updateHrNote(UUID applicationId, String hrNote, UUID actorId, Role role);
 }

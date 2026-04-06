@@ -70,6 +70,8 @@ public class GlobalExceptionHandler {
                 status = HttpStatus.UNAUTHORIZED;
             } else if (msg.contains("rate limit")) {
                 status = HttpStatus.TOO_MANY_REQUESTS;
+            } else if (msg.contains("tam thoi bi khoa") || msg.contains("temporarily blocked")) {
+                status = HttpStatus.TOO_MANY_REQUESTS;
             } else if (msg.contains("access denied")) {
                 status = HttpStatus.FORBIDDEN;
             } else if (msg.contains("not found")) {
@@ -80,6 +82,8 @@ public class GlobalExceptionHandler {
                 status = HttpStatus.BAD_REQUEST;
             } else if (msg.contains("too long")) {
                 status = HttpStatus.BAD_REQUEST;
+            } else if (msg.contains("invalid status transition")) {
+                status = HttpStatus.BAD_REQUEST;
             }
         }
         
@@ -87,6 +91,21 @@ public class GlobalExceptionHandler {
                 ErrorResponse.builder()
                         .success(false)
                         .message(ex.getMessage())
+                        .build()
+        );
+    }
+
+    /**
+     * IOException (checked) từ lớp thư viện không đi qua {@link #handleRuntimeException} — log và trả message gốc
+     * thay vì chỉ chữ "Internal Server Error" (khó debug upload file).
+     */
+    @ExceptionHandler(java.io.IOException.class)
+    public ResponseEntity<ErrorResponse> handleIOException(java.io.IOException ex) {
+        log.error("IOException: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ErrorResponse.builder()
+                        .success(false)
+                        .message(ex.getMessage() != null ? ex.getMessage() : "I/O error while processing request")
                         .build()
         );
     }

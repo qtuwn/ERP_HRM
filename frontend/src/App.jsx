@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { FEATURE_PASSWORD_RESET_EMAIL } from './config/featureFlags.js'
 import { PublicShell } from './components/PublicShell.jsx'
 import { AdminShell } from './components/AdminShell.jsx'
 import { RequireAuth } from './routes/RequireAuth.jsx'
@@ -19,22 +20,41 @@ const ForgotPasswordConfirmPage = lazy(() =>
 )
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((m) => ({ default: m.ProfilePage })))
+const ResumeLibraryPage = lazy(() =>
+  import('./pages/ResumeLibraryPage.jsx').then((m) => ({ default: m.ResumeLibraryPage }))
+)
 const CandidateApplicationsPage = lazy(() =>
   import('./pages/CandidateApplicationsPage.jsx').then((m) => ({ default: m.CandidateApplicationsPage }))
 )
+const ApplicationTasksPage = lazy(() =>
+  import('./pages/ApplicationTasksPage.jsx').then((m) => ({ default: m.ApplicationTasksPage }))
+)
 const ApplyPage = lazy(() => import('./pages/ApplyPage.jsx').then((m) => ({ default: m.ApplyPage })))
+const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx').then((m) => ({ default: m.MessagesPage })))
+const NotificationsPage = lazy(() =>
+  import('./pages/NotificationsPage.jsx').then((m) => ({ default: m.NotificationsPage }))
+)
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage })))
 const JobsManagementPage = lazy(() =>
   import('./pages/JobsManagementPage.jsx').then((m) => ({ default: m.JobsManagementPage }))
 )
 const KanbanPage = lazy(() => import('./pages/KanbanPage.jsx').then((m) => ({ default: m.KanbanPage })))
+const RecruiterMessagesPage = lazy(() =>
+  import('./pages/RecruiterMessagesPage.jsx').then((m) => ({ default: m.RecruiterMessagesPage }))
+)
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage.jsx').then((m) => ({ default: m.AdminUsersPage })))
 const AdminCompaniesPage = lazy(() =>
   import('./pages/AdminCompaniesPage.jsx').then((m) => ({ default: m.AdminCompaniesPage }))
 )
 const AdminSkillDictionaryPage = lazy(() =>
   import('./pages/AdminSkillDictionaryPage.jsx').then((m) => ({ default: m.AdminSkillDictionaryPage }))
+)
+const AdminAnalyticsPage = lazy(() =>
+  import('./pages/AdminAnalyticsPage.jsx').then((m) => ({ default: m.AdminAnalyticsPage }))
+)
+const ProfileSessionsPage = lazy(() =>
+  import('./pages/ProfileSessionsPage.jsx').then((m) => ({ default: m.ProfileSessionsPage }))
 )
 const CompanyStaffPage = lazy(() =>
   import('./pages/CompanyStaffPage.jsx').then((m) => ({ default: m.CompanyStaffPage }))
@@ -58,16 +78,54 @@ export default function App() {
         <Route path="/register" element={withSuspense(<RegisterPage />)} />
         <Route path="/verify-email" element={withSuspense(<VerifyEmailPage />)} />
         <Route path="/verify-otp" element={withSuspense(<VerifyOtpPage />)} />
-        <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
-        <Route path="/forgot-password/confirm" element={withSuspense(<ForgotPasswordConfirmPage />)} />
+        {FEATURE_PASSWORD_RESET_EMAIL ? (
+          <>
+            <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
+            <Route path="/forgot-password/confirm" element={withSuspense(<ForgotPasswordConfirmPage />)} />
+          </>
+        ) : (
+          <>
+            <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
+            <Route path="/forgot-password/confirm" element={<Navigate to="/login" replace />} />
+          </>
+        )}
         <Route path="/forbidden" element={withSuspense(<ForbiddenPage />)} />
         <Route path="/jobs" element={withSuspense(<JobsPage />)} />
         <Route path="/jobs/:id" element={withSuspense(<JobDetailPage />)} />
         <Route path="/profile" element={<RequireAuth>{withSuspense(<ProfilePage />)}</RequireAuth>} />
         <Route
+          path="/profile/sessions"
+          element={<RequireAuth>{withSuspense(<ProfileSessionsPage />)}</RequireAuth>}
+        />
+        <Route
+          path="/profile/resumes"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['CANDIDATE']}>{withSuspense(<ResumeLibraryPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/candidate/applications"
           element={<RequireAuth>{withSuspense(<CandidateApplicationsPage />)}</RequireAuth>}
         />
+        <Route
+          path="/candidate/applications/:applicationId/tasks"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['CANDIDATE']}>{withSuspense(<ApplicationTasksPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['CANDIDATE']}>{withSuspense(<MessagesPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route path="/notifications" element={<RequireAuth>{withSuspense(<NotificationsPage />)}</RequireAuth>} />
         <Route path="/jobs/:jobId/apply" element={<RequireAuth>{withSuspense(<ApplyPage />)}</RequireAuth>} />
       </Route>
 
@@ -76,7 +134,17 @@ export default function App() {
           path="/dashboard"
           element={
             <RequireAuth>
-              <RequireRole roles={['HR', 'ADMIN', 'COMPANY']}>{withSuspense(<DashboardPage />)}</RequireRole>
+              <RequireRole roles={['HR', 'COMPANY']} redirectTo="/admin/analytics">
+                {withSuspense(<DashboardPage />)}
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard/messages"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['HR', 'COMPANY']}>{withSuspense(<RecruiterMessagesPage />)}</RequireRole>
             </RequireAuth>
           }
         />
@@ -92,7 +160,15 @@ export default function App() {
           path="/jobs/:jobId/kanban"
           element={
             <RequireAuth>
-              <RequireRole roles={['HR', 'ADMIN', 'COMPANY']}>{withSuspense(<KanbanPage />)}</RequireRole>
+              <RequireRole roles={['HR', 'COMPANY']}>{withSuspense(<KanbanPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard/applications/:applicationId/tasks"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['HR', 'COMPANY']}>{withSuspense(<ApplicationTasksPage />)}</RequireRole>
             </RequireAuth>
           }
         />
@@ -117,6 +193,14 @@ export default function App() {
           element={
             <RequireAuth>
               <RequireRole roles={['ADMIN']}>{withSuspense(<AdminSkillDictionaryPage />)}</RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <RequireAuth>
+              <RequireRole roles={['ADMIN']}>{withSuspense(<AdminAnalyticsPage />)}</RequireRole>
             </RequireAuth>
           }
         />

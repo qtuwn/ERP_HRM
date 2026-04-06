@@ -7,5 +7,7 @@ public enum ApplicationStatus {
     INTERVIEW,
     OFFER,
     REJECTED,
-    HIRED
+    HIRED,
+    /** Ứng viên chủ động rút đơn (còn trong thời hạn & giai đoạn cho phép). */
+    WITHDRAWN
 }

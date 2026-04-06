@@ -148,11 +148,16 @@ export function CompanyStaffPage() {
   }
 
   return (
-    <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full min-w-0 max-w-full px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Nhân sự công ty</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Quản lý tài khoản HR thuộc công ty của bạn.</p>
+          {currentUser?.companyId ? (
+            <p className="mt-1 break-all font-mono text-xs text-slate-500 dark:text-slate-500">
+              Phạm vi theo mã công ty (UUID): <span className="text-slate-700 dark:text-slate-300">{currentUser.companyId}</span>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -186,13 +191,13 @@ export function CompanyStaffPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {loading ? (
           <div className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">Đang tải...</div>
         ) : (
           <>
-            <div className="w-full overflow-x-auto">
-              <table className="w-full table-auto divide-y divide-slate-200 dark:divide-slate-800">
+            <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain">
+              <table className="w-full min-w-[640px] table-auto divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-800/60">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -213,7 +218,7 @@ export function CompanyStaffPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Trạng thái
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="px-4 py-3 pr-5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 sm:pr-6">
                       Hành động
                     </th>
                   </tr>
@@ -276,7 +281,7 @@ export function CompanyStaffPage() {
               <div className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">Chưa có nhân sự nào.</div>
             ) : null}
 
-            <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-4 sm:px-6 dark:border-slate-800">
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Tổng: <span className="font-semibold text-slate-800 dark:text-slate-200">{totalElements}</span>
               </p>

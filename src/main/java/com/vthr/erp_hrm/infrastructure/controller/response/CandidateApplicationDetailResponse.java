@@ -13,4 +13,6 @@ public class CandidateApplicationDetailResponse {
     private String jobTitle;
     private AIEvaluation aiEvaluation;
     private List<Interview> interviews;
+    /** Có thể rút đơn trong điều kiện hiện tại hay không. */
+    private WithdrawalEligibilityResponse withdrawalEligibility;
 }

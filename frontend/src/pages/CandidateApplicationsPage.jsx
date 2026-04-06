@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
 import { getUser } from '../lib/storage.js'
-import { Link } from 'react-router-dom'
-import { X, MessageCircle, FileDown } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { X, MessageCircle, FileDown, UserX, ClipboardList } from 'lucide-react'
 
 const STEPS = [
   { key: 'APPLIED', label: 'Đã nộp' },
@@ -20,12 +20,14 @@ function statusBadgeClass(status) {
   if (s === 'OFFER' || s === 'HIRED')
     return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200'
   if (s === 'REJECTED') return 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200'
+  if (s === 'WITHDRAWN') return 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
   return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
 }
 
 function statusText(status) {
   const s = String(status || '')
   const k = normalizeForStepper(s)
+  if (s === 'WITHDRAWN') return 'Đã rút đơn'
   if (s === 'REJECTED') return 'Từ chối'
   if (k === 'APPLIED') return s.startsWith('AI_') ? 'Đã nộp (AI đang xử lý)' : 'Đã nộp'
   if (k === 'HR_REVIEW') return 'HR duyệt'
@@ -47,11 +49,14 @@ function stepIndex(status) {
   const idx = STEPS.findIndex((x) => x.key === s)
   if (idx >= 0) return idx
   if (s === 'REJECTED') return 0
+  if (s === 'WITHDRAWN') return 0
   return 0
 }
 
 export function CandidateApplicationsPage() {
   const user = useMemo(() => getUser(), [])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const openFromQueryOnceRef = useRef(false)
 
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +65,7 @@ export function CandidateApplicationsPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detail, setDetail] = useState(null)
   const [stageHistory, setStageHistory] = useState([])
+  const [withdrawing, setWithdrawing] = useState(false)
 
   async function fetchList() {
     setLoading(true)
@@ -74,6 +80,19 @@ export function CandidateApplicationsPage() {
   useEffect(() => {
     fetchList()
   }, [])
+
+  useEffect(() => {
+    if (openFromQueryOnceRef.current) return
+    const appId = searchParams.get('applicationId')
+    if (!appId) return
+    if (!applications || applications.length === 0) return
+    if (!applications.some((a) => String(a.id) === String(appId))) return
+    openFromQueryOnceRef.current = true
+    openDetail(appId)
+    const next = new URLSearchParams(searchParams)
+    next.delete('applicationId')
+    setSearchParams(next, { replace: true })
+  }, [applications, searchParams, setSearchParams])
 
   async function openDetail(appId) {
     setDetailOpen(true)
@@ -93,6 +112,7 @@ export function CandidateApplicationsPage() {
   }
 
   function openChat(app) {
+    if (String(app?.status || '') === 'WITHDRAWN') return
     window.dispatchEvent(
       new CustomEvent('open-chat', {
         detail: {
@@ -103,10 +123,40 @@ export function CandidateApplicationsPage() {
     )
   }
 
+  async function withdrawApplication(appId) {
+    if (!appId) return
+    if (
+      !confirm(
+        'Bạn có chắc muốn rút đơn ứng tuyển này? Sau khi rút, bạn có thể ứng tuyển lại cùng tin nếu tin vẫn còn mở và trong hạn.'
+      )
+    ) {
+      return
+    }
+    setWithdrawing(true)
+    try {
+      await api.post(`/api/users/me/applications/${appId}/withdraw`, {})
+      setDetailOpen(false)
+      setDetail(null)
+      await fetchList()
+    } catch (e) {
+      alert(e?.message || 'Không thể rút đơn.')
+      await fetchList()
+      if (detailOpen) {
+        try {
+          await openDetail(appId)
+        } catch {
+          /* bỏ qua — tránh kẹt UI khi session lỗi */
+        }
+      }
+    } finally {
+      setWithdrawing(false)
+    }
+  }
+
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">My Applications</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Đơn ứng tuyển của tôi</h1>
         <Link to="/jobs" className="text-sm font-medium text-[#2563eb] hover:underline">
           Tìm việc
         </Link>
@@ -142,15 +192,16 @@ export function CandidateApplicationsPage() {
                       onClick={() => openDetail(app.id)}
                       className="inline-flex items-center px-3 py-2 border border-slate-300 dark:border-slate-700 text-sm font-medium rounded-md shadow-sm bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                     >
-                      Detail
+                      Chi tiết
                     </button>
                     <button
                       type="button"
                       onClick={() => openChat(app)}
+                      disabled={String(app.status || '') === 'WITHDRAWN'}
                       className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[#2563eb] bg-blue-50 hover:bg-blue-100 transition disabled:opacity-60 disabled:cursor-not-allowed dark:bg-blue-950/30 dark:hover:bg-blue-950/40"
                     >
                       <MessageCircle className="h-4 w-4 mr-1.5" />
-                      Open Chat
+                      Mở chat
                     </button>
                   </div>
                 </div>
@@ -207,7 +258,11 @@ export function CandidateApplicationsPage() {
                     <div>
                       <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">Tiến trình</h4>
                       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 p-4">
-                        {normalizeForStepper(detail?.application?.status) === 'REJECTED' ? (
+                        {String(detail?.application?.status || '') === 'WITHDRAWN' ? (
+                          <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                            Bạn đã rút đơn ứng tuyển này.
+                          </div>
+                        ) : normalizeForStepper(detail?.application?.status) === 'REJECTED' ? (
                           <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">
                             Hồ sơ đã bị từ chối
                           </div>
@@ -238,6 +293,29 @@ export function CandidateApplicationsPage() {
                       </div>
                     </div>
 
+                    {detail?.withdrawalEligibility?.allowed ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                        <p className="text-sm text-amber-900 dark:text-amber-100">
+                          Bạn có thể rút đơn khi tin còn mở, chưa hết hạn nộp và đơn đang ở giai đoạn đầu (chưa phỏng
+                          vấn / offer).
+                        </p>
+                        <button
+                          type="button"
+                          disabled={withdrawing}
+                          onClick={() => withdrawApplication(detail.application?.id)}
+                          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                        >
+                          <UserX className="h-4 w-4" />
+                          {withdrawing ? 'Đang xử lý…' : 'Rút đơn ứng tuyển'}
+                        </button>
+                      </div>
+                    ) : detail?.withdrawalEligibility?.reason &&
+                      String(detail?.application?.status || '') !== 'WITHDRAWN' ? (
+                      <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+                        <span className="font-semibold">Rút đơn:</span> {detail.withdrawalEligibility.reason}
+                      </p>
+                    ) : null}
+
                     {stageHistory.length > 0 ? (
                       <div>
                         <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
@@ -261,6 +339,16 @@ export function CandidateApplicationsPage() {
                           ))}
                         </ol>
                       </div>
+                    ) : null}
+
+                    {String(detail?.application?.status || '') !== 'WITHDRAWN' ? (
+                      <Link
+                        to={`/candidate/applications/${detail.application?.id}/tasks`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#2563eb]/40 bg-blue-50/80 px-4 py-2.5 text-sm font-semibold text-[#2563eb] hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        Nhiệm vụ &amp; tài liệu từ HR
+                      </Link>
                     ) : null}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

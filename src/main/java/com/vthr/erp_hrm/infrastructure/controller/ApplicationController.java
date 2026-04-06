@@ -8,9 +8,12 @@ import com.vthr.erp_hrm.core.service.ResumeService;
 import com.vthr.erp_hrm.infrastructure.controller.request.ApplicationUpdateRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.ApplyWithResumeRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.BulkStatusUpdateRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.UpdateHrNoteRequest;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse;
+import com.vthr.erp_hrm.infrastructure.controller.response.RecruiterApplicationReviewResponse;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import com.vthr.erp_hrm.infrastructure.storage.FileStorageService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import jakarta.validation.Valid;
@@ -20,7 +23,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -75,16 +85,13 @@ public class ApplicationController {
     }
 
     @GetMapping("/jobs/{jobId}/applications")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<Page<ApplicationResponse>>> getApplicationsForJob(
             @PathVariable UUID jobId,
             Pageable pageable,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireRecruiterForJobTopic(userId, role, jobId);
         Page<ApplicationResponse> apps = applicationService.getApplicationsByJobId(jobId, pageable)
                 .map(this::mapAndSignUrl);
@@ -92,15 +99,12 @@ public class ApplicationController {
     }
 
     @GetMapping("/jobs/{jobId}/applications/kanban")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse>>> getKanbanApplications(
             @PathVariable UUID jobId,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireRecruiterForJobTopic(userId, role, jobId);
         java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> apps = applicationService
                 .getKanbanApplications(jobId);
@@ -140,16 +144,22 @@ public class ApplicationController {
         return ResponseEntity.ok(ApiResponse.success(detail, "Fetched application detail successfully"));
     }
 
+    @PostMapping("/users/me/applications/{id}/withdraw")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<ApiResponse<ApplicationResponse>> withdrawMyApplication(
+            @PathVariable UUID id, Authentication authentication) {
+        UUID candidateId = UUID.fromString(authentication.getName());
+        Application updated = applicationService.withdrawApplicationByCandidate(id, candidateId);
+        return ResponseEntity.ok(ApiResponse.success(mapAndSignUrl(updated), "Application withdrawn"));
+    }
+
     @GetMapping("/users/me/applications/{id}/stage-history")
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<ApiResponse<java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse>>> getMyApplicationStageHistory(
             @PathVariable UUID id,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         var list = applicationService.getApplicationStageHistory(id, userId, role).stream()
                 .map(com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse::fromDomain)
                 .toList();
@@ -157,23 +167,43 @@ public class ApplicationController {
     }
 
     @GetMapping("/applications/{id}/stage-history")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse>>> getApplicationStageHistoryForRecruiter(
             @PathVariable UUID id,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         var list = applicationService.getApplicationStageHistory(id, userId, role).stream()
                 .map(com.vthr.erp_hrm.infrastructure.controller.response.ApplicationStageHistoryResponse::fromDomain)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(list, "OK"));
     }
 
+    @GetMapping("/applications/{id}/hr-review")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
+    public ResponseEntity<ApiResponse<RecruiterApplicationReviewResponse>> getApplicationHrReview(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        Role role = SecurityRoleResolver.resolveRole(authentication);
+        RecruiterApplicationReviewResponse res = applicationService.getApplicationReviewForRecruiter(id, userId, role);
+        return ResponseEntity.ok(ApiResponse.success(res, "OK"));
+    }
+
+    @PatchMapping("/applications/{id}/hr-note")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
+    public ResponseEntity<ApiResponse<ApplicationResponse>> updateApplicationHrNote(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateHrNoteRequest request,
+            Authentication authentication) {
+        UUID actorId = UUID.fromString(authentication.getName());
+        Role role = SecurityRoleResolver.resolveRole(authentication);
+        Application updated = applicationService.updateHrNote(id, request.getHrNote(), actorId, role);
+        return ResponseEntity.ok(ApiResponse.success(mapAndSignUrl(updated), "Ghi chú HR đã lưu"));
+    }
+
     @PatchMapping("/applications/{id}/status")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<ApplicationResponse>> updateApplicationStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ApplicationUpdateRequest request,
@@ -185,17 +215,17 @@ public class ApplicationController {
     }
 
     @PostMapping("/applications/bulk-reject")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
-    public ResponseEntity<ApiResponse<Void>> bulkRejectApplications(
-            @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.BulkRejectRequest request,
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
+    public ResponseEntity<ApiResponse<com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse>> bulkRejectApplications(
+            @Valid @RequestBody com.vthr.erp_hrm.infrastructure.controller.request.BulkRejectRequest request,
             Authentication authentication) {
         UUID hrId = UUID.fromString(authentication.getName());
-        applicationService.bulkRejectApplications(request.getApplicationIds(), hrId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Bulk rejection processed successfully"));
+        var result = applicationService.bulkRejectApplications(request.getApplicationIds(), hrId);
+        return ResponseEntity.ok(ApiResponse.success(result, "Bulk rejection processed"));
     }
 
     @PostMapping("/applications/bulk-status")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<BulkStatusUpdateResponse>> bulkUpdateStatus(
             @Valid @RequestBody BulkStatusUpdateRequest request,
             Authentication authentication
@@ -211,16 +241,13 @@ public class ApplicationController {
     }
 
     @GetMapping("/applications/{id}/ai-evaluation")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<com.vthr.erp_hrm.core.model.AIEvaluation>> getAiEvaluation(
             @PathVariable UUID id,
             Authentication authentication
     ) {
         UUID userId = UUID.fromString(authentication.getName());
-        Role role = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role role = SecurityRoleResolver.resolveRole(authentication);
         applicationAccessService.requireParticipantForMessaging(userId, role, id);
         var eval = aiEvaluationRepository.findByApplicationId(id).orElse(null);
         return ResponseEntity.ok(ApiResponse.success(eval, "Fetched AI evaluation"));

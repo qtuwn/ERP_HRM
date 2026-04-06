@@ -4,6 +4,7 @@ import com.vthr.erp_hrm.core.model.Interview;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.service.InterviewService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class InterviewController {
     }
 
     @PostMapping("/applications/{applicationId}/interviews")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<Interview>> scheduleInterview(
             @PathVariable UUID applicationId,
             @RequestBody ScheduleInterviewRequest request,
@@ -51,15 +52,12 @@ public class InterviewController {
     }
 
     @GetMapping("/applications/{applicationId}/interviews")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'CANDIDATE')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY', 'CANDIDATE')")
     public ResponseEntity<ApiResponse<List<Interview>>> getInterviews(
             @PathVariable UUID applicationId,
             Authentication authentication) {
         UUID viewerId = UUID.fromString(authentication.getName());
-        Role viewerRole = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role viewerRole = SecurityRoleResolver.resolveRole(authentication);
         return ResponseEntity.ok(ApiResponse.success(
                 interviewService.getInterviewsByApplication(applicationId, viewerId, viewerRole),
                 "Fetched interviews successfully"
@@ -67,16 +65,13 @@ public class InterviewController {
     }
 
     @PatchMapping("/interviews/{interviewId}/status")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<Interview>> updateInterviewStatus(
             @PathVariable UUID interviewId,
             @RequestBody UpdateInterviewStatusRequest request,
             Authentication authentication) {
         UUID actorId = UUID.fromString(authentication.getName());
-        Role actorRole = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> Role.fromString(a.getAuthority()))
-                .orElse(Role.HR);
+        Role actorRole = SecurityRoleResolver.resolveRole(authentication);
         Interview interview = interviewService.updateInterviewStatus(interviewId, request.getStatus(), actorId, actorRole);
         return ResponseEntity.ok(ApiResponse.success(interview, "Updated interview status effectively"));
     }

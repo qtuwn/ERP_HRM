@@ -16,6 +16,21 @@ public class RealtimeEventService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    public void emitUserEvent(UUID userId, String eventType, Object payload) {
+        String destination = "/topic/notifications/" + userId.toString();
+        Map<String, Object> message = Map.of(
+                "type", eventType,
+                "payload", payload,
+                "timestamp", ZonedDateTime.now().toString()
+        );
+        try {
+            messagingTemplate.convertAndSend(destination, (Object) message);
+            log.debug("Emitted realtime event {} to {}", eventType, destination);
+        } catch (Exception e) {
+            log.error("Failed to emit STOMP event: {}", e.getMessage(), e);
+        }
+    }
+
     public void emitJobEvent(UUID jobId, String eventType, Object payload) {
         String destination = "/topic/jobs/" + jobId.toString();
         Map<String, Object> message = Map.of(

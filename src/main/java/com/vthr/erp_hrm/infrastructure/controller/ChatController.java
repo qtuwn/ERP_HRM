@@ -6,6 +6,7 @@ import com.vthr.erp_hrm.core.service.ChatService;
 import com.vthr.erp_hrm.infrastructure.controller.request.MessageRequest;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.MessageResponse;
+import com.vthr.erp_hrm.infrastructure.security.SecurityRoleResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,10 +34,7 @@ public class ChatController {
             Authentication authentication) {
 
         UUID viewerId = UUID.fromString(authentication.getName());
-        Role viewerRole = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(auth -> Role.fromString(auth.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role viewerRole = SecurityRoleResolver.resolveRole(authentication);
 
         Page<Message> msgPage = chatService.getMessageHistory(applicationId, viewerId, viewerRole, pageable);
         Page<MessageResponse> responsePage = msgPage.map(this::mapToResponse);
@@ -52,10 +50,7 @@ public class ChatController {
             Authentication authentication) {
 
         UUID senderId = UUID.fromString(authentication.getName());
-        Role senderRole = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(auth -> Role.fromString(auth.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role senderRole = SecurityRoleResolver.resolveRole(authentication);
 
         Message saved = chatService.sendMessage(applicationId, senderId, senderRole, request.getContent());
 
@@ -81,10 +76,7 @@ public class ChatController {
             Authentication authentication) {
 
         UUID senderId = UUID.fromString(authentication.getName());
-        Role senderRole = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(auth -> Role.fromString(auth.getAuthority()))
-                .orElse(Role.CANDIDATE);
+        Role senderRole = SecurityRoleResolver.resolveRole(authentication);
 
         chatService.indicateTyping(applicationId, senderId, senderRole);
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { getUser, setUser as persistUser } from '../lib/storage.js'
+import { getUser, isUserAccountActive, setUser as persistUser } from '../lib/storage.js'
 import { api } from '../lib/api.js'
 
 export function ProfilePage() {
@@ -21,6 +21,9 @@ export function ProfilePage() {
   const [pwSuccess, setPwSuccess] = useState('')
 
   if (!user) return <Navigate to="/login" replace state={{ from: '/profile' }} />
+
+  const isCandidate = String(user?.role || '').toUpperCase() === 'CANDIDATE'
+  const accountActive = isUserAccountActive(user)
 
   useEffect(() => {
     let alive = true
@@ -156,18 +159,23 @@ export function ProfilePage() {
 
             <div className="text-sm text-slate-600 dark:text-slate-400">
               <div>Email: <span className="font-medium text-slate-800 dark:text-slate-100">{user?.email || '—'}</span></div>
-              <div>Phòng ban: <span className="font-medium text-slate-800 dark:text-slate-100">{user?.department || 'Chưa cập nhật'}</span></div>
+              {!isCandidate ? (
+                <div>
+                  Phòng ban:{' '}
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{user?.department || 'Chưa cập nhật'}</span>
+                </div>
+              ) : null}
               <div>
-                Trạng thái:{' '}
+                Trạng thái tài khoản:{' '}
                 <span
                   className={[
                     'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
-                    user?.isActive
+                    accountActive
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
                   ].join(' ')}
                 >
-                  {user?.isActive ? 'Đang hoạt động' : 'Đã khóa'}
+                  {accountActive ? 'Đang hoạt động' : 'Đã khóa'}
                 </span>
               </div>
               {profileLoading ? <div className="mt-2">Đang tải hồ sơ…</div> : null}
@@ -181,6 +189,20 @@ export function ProfilePage() {
             {profileSuccess ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
                 {profileSuccess}
+              </div>
+            ) : null}
+
+            {isCandidate ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <span className="font-medium">Kho CV:</span> tải CV lên để dùng lại khi ứng tuyển (chọn từ kho trên bước nộp hồ sơ).
+                </p>
+                <Link
+                  to="/profile/resumes"
+                  className="mt-2 inline-flex text-sm font-semibold text-[#2563eb] hover:underline"
+                >
+                  Quản lý kho CV cá nhân →
+                </Link>
               </div>
             ) : null}
 
@@ -265,6 +287,23 @@ export function ProfilePage() {
               {pwLoading ? 'Đang đổi…' : 'Đổi mật khẩu'}
             </button>
           </form>
+        </div>
+      </div>
+
+      <div className="mt-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Phiên đăng nhập</h3>
+        </div>
+        <div className="px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Xem các phiên đang hoạt động, thu hồi từng thiết bị hoặc đăng xuất toàn bộ.
+          </p>
+          <Link
+            to="/profile/sessions"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Quản lý phiên →
+          </Link>
         </div>
       </div>
 

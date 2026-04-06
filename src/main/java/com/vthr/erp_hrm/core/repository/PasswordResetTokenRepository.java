@@ -11,5 +11,8 @@ public interface PasswordResetTokenRepository {
 
     List<PasswordResetToken> findActiveByUserId(UUID userId);
 
+    /** Bản ghi reset gần nhất (kể cả đã dùng) — phục vụ cooldown gửi OTP. */
+    Optional<PasswordResetToken> findLatestByUserId(UUID userId);
+
     PasswordResetToken save(PasswordResetToken token);
 }

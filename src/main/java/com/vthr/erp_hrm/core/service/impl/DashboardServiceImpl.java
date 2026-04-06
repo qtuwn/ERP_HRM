@@ -29,11 +29,12 @@ public class DashboardServiceImpl implements DashboardService {
 
         List<String> statuses = Arrays.asList("APPLIED", "AI_SCREENING", "HR_REVIEW", "INTERVIEW", "OFFER", "HIRED",
                 "REJECTED");
+        Map<String, Long> grouped = applicationRepository.countApplicationsGroupedByStatus();
         Map<String, Long> appsByStatus = new HashMap<>();
         long hiredCount = 0;
 
         for (String status : statuses) {
-            long count = applicationRepository.countByStatus(status);
+            long count = grouped.getOrDefault(status, 0L);
             appsByStatus.put(status, count);
             if ("HIRED".equals(status)) {
                 hiredCount = count;

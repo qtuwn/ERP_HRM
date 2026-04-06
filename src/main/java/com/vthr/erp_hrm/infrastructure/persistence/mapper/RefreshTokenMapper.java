@@ -15,6 +15,8 @@ public class RefreshTokenMapper {
                 .expiresAt(entity.getExpiresAt())
                 .revoked(entity.isRevoked())
                 .createdAt(entity.getCreatedAt())
+                .clientIp(entity.getClientIp())
+                .userAgent(entity.getUserAgent())
                 .build();
     }
 
@@ -27,6 +29,8 @@ public class RefreshTokenMapper {
                 .expiresAt(domain.getExpiresAt())
                 .revoked(domain.isRevoked())
                 .createdAt(domain.getCreatedAt())
+                .clientIp(domain.getClientIp())
+                .userAgent(domain.getUserAgent())
                 .build();
     }
 }

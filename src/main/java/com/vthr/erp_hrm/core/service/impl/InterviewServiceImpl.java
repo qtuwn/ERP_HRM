@@ -13,6 +13,8 @@ import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.core.service.ApplicationService;
 import com.vthr.erp_hrm.core.service.InterviewService;
 import com.vthr.erp_hrm.core.service.ApplicationAccessService;
+import com.vthr.erp_hrm.core.service.NotificationService;
+import com.vthr.erp_hrm.core.model.NotificationType;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final EmailQueueService emailQueueService;
     private final ApplicationService applicationService;
     private final ApplicationAccessService applicationAccessService;
+    private final NotificationService notificationService;
 
     @Override
     public Interview scheduleInterview(UUID applicationId, ZonedDateTime interviewTime, String locationOrLink, UUID interviewerId) {
@@ -69,6 +72,19 @@ public class InterviewServiceImpl implements InterviewService {
                             "interviewNote", "Vui lòng xem kỹ file Đính kèm hoặc chuẩn bị kỹ thuật trước khi tham gia."
                     )
             );
+
+            try {
+                notificationService.create(
+                        candidate.getId(),
+                        NotificationType.INTERVIEW_SCHEDULED,
+                        "Có lịch phỏng vấn mới",
+                        "Vị trí: " + job.getTitle() + " • Thời gian: " + timeStr,
+                        "/candidate/applications?applicationId=" + applicationId,
+                        null
+                );
+            } catch (Exception ignored) {
+                // ignore
+            }
         }
 
         return saved;

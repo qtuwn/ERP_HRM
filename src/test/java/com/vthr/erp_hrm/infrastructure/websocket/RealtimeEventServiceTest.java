@@ -58,5 +58,22 @@ class RealtimeEventServiceTest {
         assertEquals(payload, msg.get("payload"));
         assertNotNull(msg.get("timestamp"));
     }
+
+    @Test
+    void emitUserEvent_sendsToExpectedTopicWithEnvelope() {
+        UUID userId = UUID.randomUUID();
+        Map<String, Object> payload = Map.of("a", "b");
+
+        realtimeEventService.emitUserEvent(userId, "notification:new", payload);
+
+        ArgumentCaptor<Object> cap = ArgumentCaptor.forClass(Object.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/notifications/" + userId), cap.capture());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> msg = (Map<String, Object>) cap.getValue();
+        assertEquals("notification:new", msg.get("type"));
+        assertEquals(payload, msg.get("payload"));
+        assertNotNull(msg.get("timestamp"));
+    }
 }
 
