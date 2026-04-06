@@ -27,7 +27,11 @@ Tài liệu kết hợp:
 | **F1–F2** | JWT CONNECT + chặn SUBSCRIBE trái phép; `ChatServiceImpl` + REST history dùng cùng rule participant. |
 | **Tests** | `ApplicationAccessServiceImplTest`, `ApplicationServiceImplApplyTest`; `KanbanUiTest` sửa kỳ vọng `/` → 200 (SPA). Rà soát epic: bổ sung `UserServiceImplTest`, mở rộng `ChatServiceImplRateLimitTest` (validation nội dung). |
 | **Manual QA (xác nhận sau sửa)** | Chủ dự án xác nhận regression tay (Docker compose / FE): auth, job, Kanban, chat, nhân sự công ty, phân quyền HR (chỉ job tự tạo) / COMPANY (toàn job công ty theo `companyId`), build ổn định. Chi tiết §1 DoD + bảng MT-KAN-03. |
-| **I1–I6 (Epic I)** | UX portal việc làm kiểu ITviec: header danh mục + Tin nhắn/Thông báo; `/jobs` bộ lọc đa tiêu chí + 3 khối (mới / phù hợp / hấp dẫn); `/messages` 2 cột; HR mở chat từ Kanban. Chi tiết §2 Epic I. |
+| **I1–I6 (Epic I)** | UX portal việc làm kiểu ITviec: header danh mục + Tin nhắn/Thông báo; `/jobs` bộ lọc đa tiêu chí + 3 khối (mới / phù hợp / hấp dẫn); `/messages` 2 cột; HR hub `/dashboard/messages` + inbox API + Kanban điều hướng hub. Chi tiết §2 Epic I. |
+| **I7 (HR inbox)** | `GET /api/inbox/recruiter/threads`, `RecruiterMessagesPage` (preview + “tất cả tin”), Kanban → `?jobId&applicationId`. Unit: `InboxServiceImplTest`. |
+| **I8 (Hub ứng viên — rút đơn)** | `POST /api/users/me/applications/{id}/withdraw`, `ApplicationStatus.WITHDRAWN`, `withdrawalEligibility` trong chi tiết đơn; FE `CandidateApplicationsPage`. Chi tiết: `docs/CANDIDATE_HUB_WITHDRAW_PLAN.md`. |
+| **I3 / Epic J (Thông báo)** | BE `V23__notifications` + API + STOMP; FE `NotificationsPage` + badge unread trên `PublicShell` (poll `unread-count`). |
+| **L1–L4 (Admin / Analytics / Sessions / Mật khẩu)** | Epic L + `V25` IP/UA refresh; quên MK: cooldown, **rate limit IP**, **lockout OTP sai**, **link email**, audit — xem §2 Epic L. |
 
 ---
 
@@ -134,12 +138,54 @@ Optional nâng cao (không chặn sprint ngắn):
 |----|-----------|-----------|-------------------------|
 | I1 | **Header public:** menu **Danh mục** (ngành từ `GET /api/jobs/filter-options`), icon **Tin nhắn** → `/messages`, **Thông báo** → `/notifications` (chỉ ứng viên đăng nhập). | [x] `PublicShell.jsx` + route | Ứng viên: CANDIDATE; HR xem chat trong Kanban (`AdminShell`). |
 | I2 | **Trang Tin nhắn** `/messages`: layout **2 cột** (danh sách đơn ứng tuyển \| `ApplicationChatPanel`), tương tự Zalo. | [x] `MessagesPage.jsx` + `RequireRole` CANDIDATE | API: `GET /api/users/me/applications`. |
-| I3 | **Trang Thông báo** `/notifications`: placeholder tính năng tập trung (roadmap). | [x] `NotificationsPage.jsx` + `RequireAuth` | Có thể mở rộng hợp nhất email + in-app sau. |
+| I3 | **Trang Thông báo** `/notifications`: trung tâm thông báo in-app (kèm realtime) cho ứng viên. | [x] BE: `notifications` + API + unread-count<br>[x] FE: `NotificationsPage` + badge header (ứng viên) | Chi tiết **Epic J**. |
 | I4 | **`/jobs`:** hero tìm kiếm (địa điểm + ô từ khóa + nút), **bộ lọc** city / industry / jobType / level / skill đồng bộ query string; **ba khối nội dung:** việc mới nhất, phù hợp (heuristic điểm theo `q` + ngành), hấp dẫn (sort `salaryMax`); **strip HTML** mô tả thẻ job (`jobText.js`). | [x] `JobsPage.jsx` | Bỏ dòng debug `GET /api/jobs` trên UI. |
 | I5 | **Tìm kiếm & “DSA”:** Backend public dùng **JPQL/SQL** với tham số `q`, `city`, `industry`, `jobType`, `level`, `skill` + **`GET /api/jobs/filter-options`** (DISTINCT facet). **Chưa** bắt buộc HashMap/inverted index ở Java cho bản MVP; gợi ý “phù hợp” trên FE là **xếp hạng nhẹ** trên tập job đã lọc. **Mở rộng** (khi scale): index kỹ năng (HashMap / trie), cache facet (Redis), hoặc engine tìm kiếm chuyên dụng. | [x] BE (đã có trước epic)<br>[x] Doc ghi rõ | `JobServiceImplTest` cho `findOpenJobsSearch`. |
-| I6 | **HR Chat từ Kanban:** `ChatWidget` mount trong `AdminShell`; nút chat trên thẻ ứng viên `dispatchEvent('open-chat', …)`. | [x] `AdminShell.jsx`, `KanbanPage.jsx` | Sửa lỗi “bấm không phản hồi” do trước đây chỉ `PublicShell` lắng nghe sự kiện. |
+| I6 | **HR Chat từ Kanban:** `ChatWidget` trong `AdminShell` (lối tắt khác nếu còn `open-chat`); nút chat Kanban **ưu tiên hub** `navigate('/dashboard/messages?jobId=&applicationId=')`. | [x] `AdminShell.jsx`, `KanbanPage.jsx` | Widget vẫn mount; Kanban không còn `open-chat` cho luồng chính. |
+| I7 | **Hub tin HR + inbox BE:** `/dashboard/messages`, `GET /api/inbox/recruiter/threads` (optional `jobId`, preview tin cuối), FE gọi inbox thay Kanban list. | [x] `InboxController`, `InboxServiceImpl`, `RecruiterMessagesPage.jsx` | `InboxServiceImplTest` (scope job + preview). |
 
 ---
+
+### Epic J — Trung tâm thông báo (in-app + realtime STOMP)
+
+**Goal:** Ứng viên nhận thông báo khi có thay đổi liên quan hồ sơ: HR đổi stage, có lịch phỏng vấn, có cập nhật khác (task tài liệu, review, …). Hoạt động realtime qua **STOMP/SockJS** (endpoint `/ws/hrm`).
+
+| ID | Hạng mục | Checklist | Ghi chú kỹ thuật / test |
+|----|----------|-----------|-------------------------|
+| J1 | **Schema**: bảng `notifications` (per user). | [x] Flyway `V23__notifications.sql` (`gen_random_uuid()` nếu migration đúng đặc tả)<br>[x] Index theo user / read | Kiểm tra DB thực tế sau migrate. |
+| J2 | **Domain & API** | [x] `GET /api/users/me/notifications`<br>[x] `GET .../unread-count`<br>[x] `PATCH .../{id}/read` + `POST .../mark-all-read` | `NotificationController`, `NotificationServiceImpl`. |
+| J3 | **Realtime topic (STOMP)** | [x] `/topic/notifications/{userId}`<br>[x] `JwtChannelInterceptor` + `RealtimeEventService` | Payload `notification:new`. |
+| J4 | **Emit events (backend hooks)** | [x] Đổi stage (`ApplicationServiceImpl`)<br>[x] Lịch PV (`InterviewServiceImpl`)<br>[x] Task tài liệu (`ApplicationTaskServiceImpl`) | Fail-open nếu notify lỗi (không chặn nghiệp vụ). |
+| J5 | **UI NotificationsPage** | [x] List read/unread + link<br>[x] STOMP prepend; badge unread trên `PublicShell` | Poll + refetch 45s cho badge. |
+| J6 | **Manual test** | [ ] Tạo 1 đơn → HR đổi stage → candidate thấy thông báo + realtime<br>[ ] Schedule interview → candidate thấy thông báo + link chi tiết đơn | Thêm kịch bản MT-NOTI-01.. |
+
+### Epic K — Review hồ sơ & ghi chú HR (pipeline)
+
+**Mục tiêu:** HR xem đủ ngữ cảnh ứng viên trên một màn (hoặc modal) gắn với Kanban: thông tin liên hệ, nội dung đơn/CV, lịch phỏng vấn, và **ghi chú nội bộ** (`applications.hr_note`) — ứng viên **không** thấy qua API public/candidate.
+
+| ID | Task | Checklist | Ghi chú |
+|----|------|-----------|---------|
+| K1 | **API đọc review** | [x] `GET /api/applications/{id}/hr-review` → `RecruiterApplicationReviewResponse`<br>Guard: recruiter scope | CV signed URL. |
+| K2 | **API ghi chú** | [x] `PATCH /api/applications/{id}/hr-note` | `@Size` + test service nếu có. |
+| K3 | **FE Kanban** | [x] Modal đánh giá & ghi chú (`KanbanPage` gọi K1/K2) | — |
+
+### Epic L — Quản trị tài khoản (Admin), Analytics, Phiên đăng nhập, Mật khẩu (đặc tả §20–§23)
+
+Tài liệu nghiệp vụ chi tiết: `account_management_end_to_end.md` (admin, audit, state machine). Epic này **ánh xạ** yêu cầu sản phẩm mới (20–23) sang task và trạng thái code.
+
+| ID | Hạng mục (yêu cầu) | Task kỹ thuật | Checklist | Ghi chú / test |
+|----|---------------------|---------------|-----------|----------------|
+| **L1** | **§20 Admin — CRUD HR, ứng viên, danh sách user** | Danh sách + lọc + khóa/mở/xóa/đổi role đã có `AdminUserController` + `AdminUsersPage`. **Tạo HR (Admin):** dùng `POST /api/companies/{companyId}/hr-accounts` (đã `@PreAuthorize` ADMIN + `isAuthorized`). **FE:** nút *Thêm tài khoản HR* (admin) + chọn công ty + phòng ban. Quản lý ứng viên: cùng trang admin, lọc `role=CANDIDATE`. | [x] API HR theo công ty cho ADMIN<br>[x] FE admin tạo HR với `companyId`<br>[x] Danh sách toàn bộ user (có phân trang) | MT-ADM-02; regression `/admin/users`. |
+| **L2** | **§21 Analytics — biểu đồ, phân tích ứng tuyển** | `GET /api/admin/analytics/recruitment` → `RecruitmentAnalyticsSummary` (đơn theo status, job theo status, user theo role). FE `/admin/analytics` (Chart.js). Mở rộng sau: theo thời gian, export CSV, funnel. | [x] `AnalyticsServiceImpl` + repo `count*Grouped*`<br>[x] Trang Admin thống kê | `AnalyticsServiceImplTest`; MT-ADM-05 (bổ sung dưới đây). |
+| **L3** | **§22 Phiên đăng nhập — thiết bị, thu hồi, đăng xuất all** | **V25:** cột `client_ip`, `user_agent` trên `refresh_tokens`; ghi khi **login** / **refresh** (HTTP context). API session như trước; FE hiển thị IP/UA khi có. | [x] Flyway + map domain + `UserSessionItem`<br>[x] FE `/profile/sessions` | MT-SESS-01. |
+| **L4** | **§23 Khôi phục & bảo mật mật khẩu** | Cooldown theo user; **giới hạn IP** (request + confirm) + **lockout** sau N lần OTP sai (`InMemoryPasswordResetBruteForceProtection`, cấu hình `auth.password-reset-*`). **Magic link:** `POST .../request-link`, `POST .../confirm-link` + FE tab *Link email*. **Audit:** `CHANGE_PASSWORD`, `RESET_PASSWORD_OTP`, `RESET_PASSWORD_LINK`. | [x] Cooldown + IP + lockout + link<br>[x] Audit | `AuthServiceImplTest`, `InMemoryPasswordResetBruteForceProtectionTest`. |
+
+#### MT-ADM-05 / MT-SESS-01 (manual)
+
+| ID | Bước | Kỳ vọng |
+|----|------|---------|
+| MT-ADM-05 | Admin đăng nhập → `/admin/analytics` | 200, có biểu đồ + thẻ thống kê; API `GET /api/admin/analytics/recruitment` trả JSON `applicationsByStatus`, `jobsByStatus`, `usersByRole`. |
+| MT-SESS-01 | User đăng nhập → `/profile/sessions` → Thu hồi phiên khác (nếu có 2 trình duyệt) | Phiên bị revoke; `Đăng xuất tất cả` xóa refresh, chuyển về login. |
 
 ## 3. Checklist unit test (theo module — bắt buộc tối thiểu)
 
@@ -150,6 +196,10 @@ Optional nâng cao (không chặn sprint ngắn):
 - [x] `AuthService`: register thành công; email trùng; verify token invalid. (`AuthServiceImplTest`)
 - [x] `AuthService`: login sai password; login user suspended (nếu có). (`AuthServiceImplTest`)
 - [x] `AuthService`: refresh với token hết hạn / thu hồi. (`AuthServiceImplTest`)
+- [x] `AuthService`: cooldown yêu cầu OTP quên mật khẩu. (`AuthServiceImplTest`)
+- [x] `InMemoryPasswordResetBruteForceProtection`: IP + lockout theo email. (`InMemoryPasswordResetBruteForceProtectionTest`)
+- [x] `AnalyticsService`: tổng hợp recruitment summary. (`AnalyticsServiceImplTest`)
+- [x] `UserSessionService`: list / identify / revoke session. (`UserSessionServiceImplTest`)
 
 ### Job & application
 
@@ -163,6 +213,7 @@ Optional nâng cao (không chặn sprint ngắn):
 ### Chat (ứng viên ↔ HR / công ty)
 
 - [x] `ChatServiceImpl`: rate limit, nội dung rỗng/quá dài, emit realtime — `ChatServiceImplRateLimitTest`. Quyền participant/recruiter tập trung ở `ApplicationAccessService` (REST + STOMP SUBSCRIBE).
+- [x] `InboxServiceImpl`: recruiter thread list — guard `jobId`, resolve job scope HR/COMPANY/ADMIN, preview cắt — `InboxServiceImplTest`.
 
 ### Util / mapper
 
@@ -273,7 +324,7 @@ Thực hiện trên môi trường: **Docker compose (DB+Redis+app)** hoặc **S
 | §4 Kanban sequence | E* |
 | §5 Chat (đổi STOMP) | A2, F* |
 | §6 n8n | H* |
-| `account_management_end_to_end.md` | B* |
+| `account_management_end_to_end.md` | B*, L* (§20–23) |
 | `system_design_uml.md` | D*, E*, F* (AI = backlog) |
 | `rules.md` | Toàn bộ — test & security |
 

@@ -12,7 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,6 +44,17 @@ public class UserRepositoryImpl implements UserRepository {
         return jpaRepository.findById(id)
                 .filter(entity -> entity.getStatus() != AccountStatus.DELETED)
                 .map(userMapper::toDomain);
+    }
+
+    @Override
+    public List<User> findAllById(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return jpaRepository.findAllById(ids).stream()
+                .filter(entity -> entity.getStatus() != AccountStatus.DELETED)
+                .map(userMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -94,6 +108,20 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public long countByRole(Role role) {
         return jpaRepository.countByRoleAndStatusNot(role, AccountStatus.DELETED);
+    }
+
+    @Override
+    public Map<String, Long> countUsersGroupedByRole() {
+        Map<String, Long> map = new HashMap<>();
+        for (Object[] row : jpaRepository.countGroupedByRole(AccountStatus.DELETED)) {
+            if (row == null || row.length < 2 || row[0] == null) {
+                continue;
+            }
+            String roleKey = String.valueOf(row[0]);
+            long n = row[1] instanceof Number num ? num.longValue() : 0L;
+            map.put(roleKey, n);
+        }
+        return map;
     }
 
     @Override

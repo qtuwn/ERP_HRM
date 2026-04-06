@@ -26,7 +26,7 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
         if (role == Role.ADMIN) {
-            return;
+            throw new RuntimeException("Access denied");
         }
         if (role == Role.CANDIDATE) {
             if (!application.getCandidateId().equals(userId)) {
@@ -47,7 +47,7 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
             throw new RuntimeException("Access denied");
         }
         if (role == Role.ADMIN) {
-            return;
+            throw new RuntimeException("Access denied");
         }
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
@@ -64,7 +64,7 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
             throw new RuntimeException("Access denied");
         }
         if (role == Role.ADMIN) {
-            return;
+            throw new RuntimeException("Access denied");
         }
         if (role == Role.HR || role == Role.COMPANY) {
             requireRecruiterAccessToJob(userId, role, jobId);

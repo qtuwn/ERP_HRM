@@ -2,21 +2,29 @@ package com.vthr.erp_hrm.core.service.impl;
 
 import com.vthr.erp_hrm.core.model.Job;
 import com.vthr.erp_hrm.core.model.JobStatus;
+import com.vthr.erp_hrm.core.model.OpenJobsKeysetSlice;
 import com.vthr.erp_hrm.core.model.PublicJobFilterOptions;
 import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.service.JobService;
+import com.vthr.erp_hrm.infrastructure.config.CaffeineCacheConfiguration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@CacheConfig(cacheNames = CaffeineCacheConfiguration.CACHE_PUBLIC_JOB_BY_ID)
 public class JobServiceImpl implements JobService {
 
     private final JobRepository jobRepository;
@@ -39,8 +47,31 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public OpenJobsKeysetSlice getOpenJobsKeyset(
+            String q,
+            String city,
+            String industry,
+            String jobType,
+            String level,
+            String skill,
+            ZonedDateTime afterCreatedAt,
+            UUID afterId,
+            int size) {
+        return jobRepository.findOpenJobsSearchKeyset(q, city, industry, jobType, level, skill, afterCreatedAt, afterId, size);
+    }
+
+    @Override
     public PublicJobFilterOptions getOpenJobFilterOptions() {
         return jobRepository.findDistinctFilterOptionsForOpenJobs();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getCareerCompanyNames() {
+        List<String> all = jobRepository.findDistinctCompanyNamesForOpenJobs();
+        int max = 80;
+        return all.size() <= max ? all : all.subList(0, max);
     }
 
     @Override
@@ -69,8 +100,10 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(key = "#id")
     public Job getPublicJobById(UUID id) {
-        Job job = getJobById(id);
+        Job job = jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
         if (job.getStatus() != JobStatus.OPEN) {
             throw new RuntimeException("Job is not open");
         }
@@ -90,6 +123,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(key = "#id")
     public Job updateJob(UUID id, Job jobDetails) {
         Job existing = getJobById(id);
 
@@ -129,6 +163,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(key = "#id")
     public Job publishJob(UUID id) {
         Job existing = getJobById(id);
         if (existing.getStatus() == JobStatus.OPEN) {
@@ -142,6 +177,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(key = "#id")
     public Job closeJob(UUID id) {
         Job existing = getJobById(id);
         if (existing.getStatus() == JobStatus.CLOSED) {
@@ -152,6 +188,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(key = "#id")
     public void deleteJob(UUID id) {
         jobRepository.deleteById(id);
     }

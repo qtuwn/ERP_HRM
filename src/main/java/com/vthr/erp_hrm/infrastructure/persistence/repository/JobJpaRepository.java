@@ -8,11 +8,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface JobJpaRepository extends JpaRepository<JobEntity, UUID> {
+    @Query("SELECT j.status, COUNT(j) FROM JobEntity j GROUP BY j.status")
+    List<Object[]> countGroupedByStatus();
+
     Page<JobEntity> findByStatus(String status, Pageable pageable);
 
     @Query("""
@@ -64,6 +68,52 @@ public interface JobJpaRepository extends JpaRepository<JobEntity, UUID> {
             @Param("skill") String skill,
             Pageable pageable);
 
+    /**
+     * Cùng bộ lọc với {@link #searchOpenJobs}; phân trang keyset theo (createdAt DESC, id DESC).
+     * Trang đầu: {@code hasCursor = false} (cursorTime/cursorId có thể null). Trang sau: {@code hasCursor = true}.
+     */
+    @Query("""
+            SELECT j FROM JobEntity j
+            WHERE j.status = :status
+            AND (
+              :q = ''
+              OR LOWER(j.title) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.companyName, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.city, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.department, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.industry, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.requiredSkills, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR LOWER(COALESCE(j.tags, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+            )
+            AND (:city = '' OR LOWER(TRIM(COALESCE(j.city, ''))) = LOWER(TRIM(:city)))
+            AND (:industry = '' OR LOWER(TRIM(COALESCE(j.industry, ''))) = LOWER(TRIM(:industry)))
+            AND (:jobType = '' OR j.jobType = :jobType)
+            AND (:level = '' OR j.level = :level)
+            AND (
+              :skill = ''
+              OR LOWER(COALESCE(j.requiredSkills, '')) LIKE LOWER(CONCAT('%', :skill, '%'))
+              OR LOWER(COALESCE(j.tags, '')) LIKE LOWER(CONCAT('%', :skill, '%'))
+            )
+            AND (
+              :hasCursor = false
+              OR j.createdAt < :cursorTime
+              OR (j.createdAt = :cursorTime AND j.id < :cursorId)
+            )
+            ORDER BY j.createdAt DESC, j.id DESC
+            """)
+    Page<JobEntity> searchOpenJobsKeyset(
+            @Param("status") String status,
+            @Param("q") String q,
+            @Param("city") String city,
+            @Param("industry") String industry,
+            @Param("jobType") String jobType,
+            @Param("level") String level,
+            @Param("skill") String skill,
+            @Param("hasCursor") boolean hasCursor,
+            @Param("cursorTime") ZonedDateTime cursorTime,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable);
+
     @Query("SELECT DISTINCT j.city FROM JobEntity j WHERE j.status = :status AND j.city IS NOT NULL AND TRIM(j.city) <> '' ORDER BY j.city")
     List<String> findDistinctCitiesByStatus(@Param("status") String status);
 
@@ -75,6 +125,14 @@ public interface JobJpaRepository extends JpaRepository<JobEntity, UUID> {
 
     @Query("SELECT DISTINCT j.level FROM JobEntity j WHERE j.status = :status AND j.level IS NOT NULL AND TRIM(j.level) <> '' ORDER BY j.level")
     List<String> findDistinctLevelsByStatus(@Param("status") String status);
+
+    @Query("""
+            SELECT DISTINCT j.companyName FROM JobEntity j
+            WHERE j.status = :status
+            AND j.companyName IS NOT NULL AND TRIM(j.companyName) <> ''
+            ORDER BY j.companyName
+            """)
+    List<String> findDistinctCompanyNamesByStatus(@Param("status") String status);
 
     Page<JobEntity> findByDepartment(String department, Pageable pageable);
 

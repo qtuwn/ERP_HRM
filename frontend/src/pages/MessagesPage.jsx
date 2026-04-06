@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api.js'
+import { useDebouncedValue } from '../lib/useDebouncedValue.js'
 import { ApplicationChatPanel } from '../components/ApplicationChatPanel.jsx'
 import { ArrowLeft, MessageCircle, Search } from 'lucide-react'
 
@@ -20,6 +21,7 @@ export function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [listQuery, setListQuery] = useState('')
+  const debouncedListQuery = useDebouncedValue(listQuery, 280)
   const [focusChat, setFocusChat] = useState(false)
 
   useEffect(() => {
@@ -76,22 +78,22 @@ export function MessagesPage() {
   }
 
   const filtered = useMemo(() => {
-    const q = listQuery.trim().toLowerCase()
+    const q = debouncedListQuery.trim().toLowerCase()
     if (!q) return applications
     return applications.filter((a) => {
       const title = (a.jobTitle || '').toLowerCase()
       return title.includes(q)
     })
-  }, [applications, listQuery])
+  }, [applications, debouncedListQuery])
 
   const selected = applications.find((a) => String(a.id) === String(selectedId))
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[1600px] flex-col gap-0 px-4 sm:px-6 lg:flex-row lg:px-8">
+    <div className="flex h-[calc(100vh-5rem)] min-w-0 w-full flex-col gap-0 overflow-hidden bg-slate-50 dark:bg-slate-950 lg:flex-row">
       {/* Cột 1: danh sách hội thoại */}
       <aside
         className={[
-          'flex w-full shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+          'flex w-full shrink-0 min-h-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
           'lg:w-80 lg:border-b-0 lg:border-r',
           focusChat ? 'hidden lg:flex' : 'flex',
         ].join(' ')}
@@ -123,7 +125,7 @@ export function MessagesPage() {
             </Link>
           </div>
         ) : (
-          <ul className="max-h-[50vh] overflow-y-auto lg:max-h-none lg:flex-1">
+          <ul className="min-h-0 flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
               <li className="px-4 py-6 text-center text-sm text-slate-500">Không khớp từ khóa.</li>
             ) : (
@@ -155,7 +157,7 @@ export function MessagesPage() {
       {/* Cột 2: chat */}
       <section
         className={[
-          'flex min-h-[420px] min-w-0 flex-1 flex-col bg-slate-50 dark:bg-slate-950/50',
+          'flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50 dark:bg-slate-950/50',
           focusChat ? 'flex' : 'hidden lg:flex',
         ].join(' ')}
       >
@@ -172,7 +174,7 @@ export function MessagesPage() {
         <ApplicationChatPanel
           applicationId={selectedId}
           applicationTitle={selected ? `${selected.jobTitle || 'Ứng tuyển'}` : ''}
-          className="min-h-0 min-h-[360px] flex-1"
+          className="min-h-0 flex-1"
         />
       </section>
 

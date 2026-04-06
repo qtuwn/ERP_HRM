@@ -7,6 +7,8 @@ import com.vthr.erp_hrm.core.service.JobService;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService;
+import com.vthr.erp_hrm.core.service.NotificationService;
+import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -46,6 +48,12 @@ class ApplicationServiceImplStageChangeTest {
     private EmailQueueService emailQueueService;
     @Mock
     private SignedUrlService signedUrlService;
+    @Mock
+    private WebhookOutboxService webhookOutboxService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private java.time.Clock clock;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;

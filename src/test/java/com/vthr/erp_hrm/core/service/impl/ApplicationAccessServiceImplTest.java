@@ -127,6 +127,28 @@ class ApplicationAccessServiceImplTest {
     }
 
     @Test
+    void participantMessaging_admin_denied() {
+        UUID appId = UUID.randomUUID();
+        when(applicationRepository.findById(appId)).thenReturn(Optional.of(
+                Application.builder().id(appId).candidateId(UUID.randomUUID()).jobId(UUID.randomUUID()).build()));
+
+        assertThrows(RuntimeException.class,
+                () -> accessService.requireParticipantForMessaging(UUID.randomUUID(), Role.ADMIN, appId));
+    }
+
+    @Test
+    void recruiterManagement_admin_denied() {
+        assertThrows(RuntimeException.class,
+                () -> accessService.requireRecruiterForManagement(UUID.randomUUID(), Role.ADMIN, UUID.randomUUID()));
+    }
+
+    @Test
+    void jobTopic_admin_denied() {
+        assertThrows(RuntimeException.class,
+                () -> accessService.requireRecruiterForJobTopic(UUID.randomUUID(), Role.ADMIN, UUID.randomUUID()));
+    }
+
+    @Test
     void jobTopic_hr_notCreator_denied() {
         UUID jobId = UUID.randomUUID();
         UUID companyId = UUID.randomUUID();

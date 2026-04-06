@@ -1,13 +1,23 @@
 import { useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
-import { setSession } from '../lib/storage.js'
+import { normalizeUserRole, setSession } from '../lib/storage.js'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { FEATURE_PASSWORD_RESET_EMAIL } from '../config/featureFlags.js'
 
 function pickRedirectTarget(searchParams, locationState) {
   const next = searchParams.get('next')
   if (next && next.startsWith('/') && !next.startsWith('//')) return next
   if (locationState?.from && String(locationState.from).startsWith('/')) return locationState.from
   return '/dashboard'
+}
+
+/** Admin không dùng /dashboard (Tổng quan) — chỉ HR/Công ty. */
+function postLoginPath(requestedPath, userRole) {
+  const role = normalizeUserRole(userRole)
+  if (role === 'ADMIN' && (requestedPath === '/dashboard' || requestedPath.startsWith('/dashboard/'))) {
+    return '/admin/analytics'
+  }
+  return requestedPath
 }
 
 export function LoginPage() {
@@ -33,7 +43,7 @@ export function LoginPage() {
         refreshToken: data?.refreshToken,
         user: data?.user,
       })
-      navigate(from, { replace: true })
+      navigate(postLoginPath(from, data?.user?.role), { replace: true })
     } catch (err) {
       setError(err?.message || 'Login failed')
     } finally {
@@ -72,11 +82,13 @@ export function LoginPage() {
             autoComplete="current-password"
             required
           />
-          <div className="mt-2 text-right">
-            <Link to="/forgot-password" className="text-sm font-medium text-[#2563eb] hover:underline">
-              Quên mật khẩu?
-            </Link>
-          </div>
+          {FEATURE_PASSWORD_RESET_EMAIL ? (
+            <div className="mt-2 text-right">
+              <Link to="/forgot-password" className="text-sm font-medium text-[#2563eb] hover:underline">
+                Quên mật khẩu?
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {error ? (

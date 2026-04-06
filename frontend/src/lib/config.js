@@ -17,12 +17,17 @@ export function resolveApiUrl(path) {
 }
 
 /**
- * SockJS cần URL HTTP(S) tới endpoint; mặc định cùng origin `/ws/hrm`.
- * Khi API ở domain khác: VITE_WS_ORIGIN=https://api.example.com
+ * SockJS cần URL HTTP(S) tới endpoint Spring `/ws/hrm`.
+ * - Dev (Vite): mặc định `/ws/hrm` → proxy `vite.config.js` tới :8080.
+ * - Ưu tiên: VITE_WS_ORIGIN (nếu set).
+ * - Nếu chỉ set VITE_API_BASE_URL (API khác origin): dùng luôn base đó cho WS, tránh nối nhầm vào port FE.
  */
 export function getSockJsUrl() {
-  const origin = String(import.meta.env.VITE_WS_ORIGIN || '')
+  const wsOrigin = String(import.meta.env.VITE_WS_ORIGIN || '')
     .trim()
     .replace(/\/$/, '')
-  return origin ? `${origin}/ws/hrm` : '/ws/hrm'
+  if (wsOrigin) return `${wsOrigin}/ws/hrm`
+  const apiBase = getApiBaseUrl()
+  if (apiBase) return `${apiBase}/ws/hrm`
+  return '/ws/hrm'
 }

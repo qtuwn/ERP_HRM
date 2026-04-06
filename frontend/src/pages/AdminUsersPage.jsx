@@ -24,6 +24,12 @@ function badgeActive(active) {
     : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
 }
 
+const fieldSelectClass =
+  'h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
+
+const tableSelectClass =
+  'h-8 w-full max-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-800 shadow-sm focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
+
 export function AdminUsersPage() {
   const currentUser = useMemo(() => getUser(), [])
   const isCompanyRole = currentUser?.role === 'COMPANY'
@@ -43,7 +49,13 @@ export function AdminUsersPage() {
 
   const [showAddHrModal, setShowAddHrModal] = useState(false)
   const [hrSubmitting, setHrSubmitting] = useState(false)
-  const [hrForm, setHrForm] = useState({ fullName: '', email: '', password: '', departmentId: '' })
+  const [hrForm, setHrForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    departmentId: '',
+    companyId: '',
+  })
 
   async function fetchCompanies() {
     try {
@@ -153,18 +165,55 @@ export function AdminUsersPage() {
   }
 
   function openAddHrModal() {
-    setHrForm({ fullName: '', email: '', password: '', departmentId: '' })
+    setHrForm({
+      fullName: '',
+      email: '',
+      password: '',
+      departmentId: '',
+      companyId: !isCompanyRole && companyFilter ? companyFilter : '',
+    })
     setShowAddHrModal(true)
   }
+
+  async function fetchDepartmentsForAdminCompany(companyId) {
+    if (!companyId) {
+      setDepartments([])
+      return
+    }
+    try {
+      const res = await api.get(`/api/companies/${companyId}/departments`)
+      setDepartments(res?.data || [])
+    } catch {
+      setDepartments([])
+    }
+  }
+
+  useEffect(() => {
+    if (!showAddHrModal || isCompanyRole || !hrForm.companyId) return
+    fetchDepartmentsForAdminCompany(hrForm.companyId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAddHrModal, isCompanyRole, hrForm.companyId])
 
   async function addNewDepartment() {
     const name = prompt('Tên phòng ban mới?')
     if (!name || !name.trim()) return
     try {
-      const res = await api.post('/api/company/departments', { name: name.trim() })
-      if (res?.data?.id) {
-        await fetchDepartmentsCompany()
-        setHrForm((f) => ({ ...f, departmentId: res.data.id }))
+      if (isCompanyRole) {
+        const res = await api.post('/api/company/departments', { name: name.trim() })
+        if (res?.data?.id) {
+          await fetchDepartmentsCompany()
+          setHrForm((f) => ({ ...f, departmentId: res.data.id }))
+        }
+      } else {
+        if (!hrForm.companyId) {
+          alert('Chọn công ty trước khi tạo phòng ban.')
+          return
+        }
+        const res = await api.post(`/api/companies/${hrForm.companyId}/departments`, { name: name.trim() })
+        if (res?.data?.id) {
+          await fetchDepartmentsForAdminCompany(hrForm.companyId)
+          setHrForm((f) => ({ ...f, departmentId: res.data.id }))
+        }
       }
     } catch (e) {
       alert(e?.message || 'Tạo phòng ban thất bại')
@@ -179,13 +228,26 @@ export function AdminUsersPage() {
     }
     setHrSubmitting(true)
     try {
-      // NOTE: trong thymeleaf có nhiều endpoint company; ưu tiên endpoint chuẩn theo template company-staff: /api/company/staff/hr
-      await api.post('/api/company/staff/hr', {
-        fullName: hrForm.fullName,
-        email: hrForm.email,
-        password: hrForm.password,
-        departmentId: hrForm.departmentId || null,
-      })
+      if (isCompanyRole) {
+        await api.post('/api/company/staff/hr', {
+          fullName: hrForm.fullName,
+          email: hrForm.email,
+          password: hrForm.password,
+          departmentId: hrForm.departmentId || null,
+        })
+      } else {
+        if (!hrForm.companyId) {
+          alert('Vui lòng chọn công ty.')
+          setHrSubmitting(false)
+          return
+        }
+        await api.post(`/api/companies/${hrForm.companyId}/hr-accounts`, {
+          fullName: hrForm.fullName,
+          email: hrForm.email,
+          password: hrForm.password,
+          departmentId: hrForm.departmentId || null,
+        })
+      }
       setShowAddHrModal(false)
       await fetchUsers(0)
     } catch (e) {
@@ -197,33 +259,26 @@ export function AdminUsersPage() {
 
   return (
     <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="mb-6 flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản lý tài khoản</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isCompanyRole
               ? 'Quản lý nhân sự thuộc công ty của bạn.'
               : 'Quản trị vai trò và trạng thái tài khoản người dùng.'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {isCompanyRole ? (
-            <button
-              type="button"
-              onClick={openAddHrModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1d4ed8]"
-            >
-              <UserPlus className="h-4 w-4" />
-              Thêm nhân sự
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-600 dark:text-slate-300">Công ty</label>
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:flex-wrap sm:items-end">
+          {!isCompanyRole ? (
+            <div className="flex min-w-[10rem] flex-1 flex-col gap-1 sm:max-w-xs">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Công ty
+              </label>
               <select
                 value={companyFilter}
                 onChange={(e) => setCompanyFilter(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                className={fieldSelectClass}
               >
                 <option value="">Tất cả</option>
                 {companies.map((c) => (
@@ -233,43 +288,63 @@ export function AdminUsersPage() {
                 ))}
               </select>
             </div>
-          )}
+          ) : null}
 
-          {!isCompanyRole ? (
-            <>
-              <label className="text-sm text-slate-600 dark:text-slate-300">Lọc vai trò</label>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="">Tất cả</option>
-                <option value="ADMIN">ADMIN</option>
-                <option value="COMPANY">Doanh nghiệp</option>
-                <option value="HR">HR</option>
-                <option value="CANDIDATE">Ứng viên</option>
-              </select>
-            </>
-          ) : (
+          <div className="flex min-w-[10rem] flex-1 flex-col gap-1 sm:max-w-[11rem]">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Lọc vai trò
+            </label>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              className={fieldSelectClass}
             >
               <option value="">Tất cả</option>
-              <option value="HR">HR</option>
-              <option value="COMPANY">Doanh nghiệp</option>
+              {isCompanyRole ? (
+                <>
+                  <option value="HR">HR</option>
+                  <option value="COMPANY">Doanh nghiệp</option>
+                </>
+              ) : (
+                <>
+                  <option value="ADMIN">Quản trị viên</option>
+                  <option value="COMPANY">Doanh nghiệp</option>
+                  <option value="HR">Nhân sự</option>
+                  <option value="CANDIDATE">Ứng viên</option>
+                </>
+              )}
             </select>
-          )}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => fetchUsers(page)}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-[#2563eb] transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Làm mới
-          </button>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {isCompanyRole ? (
+              <button
+                type="button"
+                onClick={openAddHrModal}
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#2563eb] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8]"
+              >
+                <UserPlus className="h-4 w-4 shrink-0" />
+                Thêm nhân sự
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={openAddHrModal}
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#2563eb] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8]"
+              >
+                <UserPlus className="h-4 w-4 shrink-0" />
+                Thêm tài khoản HR
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => fetchUsers(page)}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80"
+            >
+              <RefreshCw className="h-4 w-4 shrink-0" />
+              Làm mới
+            </button>
+          </div>
         </div>
       </div>
 
@@ -279,53 +354,66 @@ export function AdminUsersPage() {
         ) : (
           <>
             <div className="w-full overflow-x-auto">
-              <table className="w-full table-auto divide-y divide-slate-200 dark:divide-slate-800">
-                <thead className="bg-slate-50 dark:bg-slate-800/60">
+              <table className="w-full min-w-[56rem] table-fixed">
+                <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[12%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Họ tên
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[18%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Email
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[12%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Công ty
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[11%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Vai trò
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[10%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Phòng ban
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[12%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Trạng thái
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th className="w-[14%] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Tạo lúc
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Hành động
+                    <th className="w-[11%] px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Thao tác
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {users.map((u) => (
-                    <tr key={u.id} className="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800 dark:text-slate-100">{u.fullName || 'Không có'}</p>
+                    <tr key={u.id} className="align-middle transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="px-3 py-2.5 align-middle">
+                        <p className="truncate font-medium text-slate-800 dark:text-slate-100" title={u.fullName || ''}>
+                          {u.fullName || 'Không có'}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{u.email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{u.companyName || '-'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5 align-middle">
+                        <p
+                          className="truncate text-sm text-slate-700 dark:text-slate-300"
+                          title={u.email || ''}
+                        >
+                          {u.email}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        <p className="truncate text-sm text-slate-600 dark:text-slate-300" title={u.companyName || ''}>
+                          {u.companyName || '—'}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
                         {isSelf(u) || isCompanyRole ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                            {displayRole(u.role)}
+                          <span className="inline-flex max-w-full items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            <span className="truncate">{displayRole(u.role)}</span>
                           </span>
                         ) : (
                           <select
                             value={u.role}
                             onChange={(e) => updateRole(u, e.target.value)}
-                            className="rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                            className={tableSelectClass}
                           >
                             <option value="ADMIN">Quản trị viên</option>
                             <option value="COMPANY">Doanh nghiệp</option>
@@ -334,51 +422,55 @@ export function AdminUsersPage() {
                           </select>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="group flex items-center gap-1">
-                          <span className="text-sm text-slate-600 dark:text-slate-300">{u.department || '-'}</span>
+                      <td className="px-3 py-2.5 align-middle">
+                        <div className="group flex min-w-0 items-center gap-1">
+                          <span className="truncate text-sm text-slate-600 dark:text-slate-300" title={u.department || ''}>
+                            {u.department || '—'}
+                          </span>
                           <button
                             type="button"
                             onClick={() => editDepartment(u)}
-                            className="opacity-0 transition group-hover:opacity-100"
+                            className="shrink-0 rounded p-0.5 text-[#2563eb] opacity-60 transition hover:opacity-100 group-hover:opacity-100"
                             title="Chỉnh sửa phòng ban"
                           >
-                            <Pencil className="h-3.5 w-3.5 text-[#2563eb]" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5 align-middle">
                         <span
                           className={[
-                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+                            'inline-flex whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium',
                             badgeActive(u.active),
                           ].join(' ')}
                         >
-                          {u.active ? 'Đang hoạt động' : 'Đã khóa'}
+                          {u.active ? 'Hoạt động' : 'Đã khóa'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                        {formatDate(u.createdAt)}
+                      <td className="px-3 py-2.5 align-middle">
+                        <span className="whitespace-nowrap text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                          {formatDate(u.createdAt)}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
+                      <td className="px-3 py-2.5 align-middle">
+                        <div className="flex justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => toggleLock(u)}
                             disabled={isSelf(u)}
                             title={u.active ? 'Khóa tài khoản' : 'Mở khóa'}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
                           >
-                            {u.active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                            {u.active ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                           </button>
                           <button
                             type="button"
                             onClick={() => deleteUser(u)}
                             disabled={isSelf(u)}
                             title="Xóa tài khoản"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-400 dark:hover:bg-red-950/70"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
@@ -449,6 +541,29 @@ export function AdminUsersPage() {
 
             <form onSubmit={submitAddHr}>
               <div className="space-y-4">
+                {!isCompanyRole ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Công ty
+                    </label>
+                    <select
+                      required
+                      value={hrForm.companyId}
+                      onChange={(e) =>
+                        setHrForm((f) => ({ ...f, companyId: e.target.value, departmentId: '' }))
+                      }
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="">— Chọn công ty —</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Họ và tên</label>
                   <div className="relative">

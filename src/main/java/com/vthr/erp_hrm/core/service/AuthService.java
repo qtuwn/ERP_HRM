@@ -25,7 +25,11 @@ public interface AuthService {
 
     void requestForgotPasswordOtp(String email);
 
+    void requestForgotPasswordMagicLink(String email);
+
     void resetPasswordWithOtp(String email, String otp, String newPassword);
+
+    void resetPasswordWithMagicLink(String token, String newPassword);
 
     void changePassword(UUID userId, String oldPassword, String newPassword);
 }

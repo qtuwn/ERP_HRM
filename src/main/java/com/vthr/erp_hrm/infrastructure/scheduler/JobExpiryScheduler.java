@@ -5,10 +5,13 @@ import com.vthr.erp_hrm.core.model.JobStatus;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.repository.UserRepository;
+import com.vthr.erp_hrm.infrastructure.config.CaffeineCacheConfiguration;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +29,7 @@ public class JobExpiryScheduler {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final EmailQueueService emailQueueService;
+    private final CacheManager cacheManager;
     private final Clock clock;
 
     @Value("${app.jobs.expiry.email.enabled:false}")
@@ -45,10 +49,15 @@ public class JobExpiryScheduler {
 
         log.info("Found {} expired jobs to close.", expiredJobs.size());
 
+        Cache publicJobCache = cacheManager.getCache(CaffeineCacheConfiguration.CACHE_PUBLIC_JOB_BY_ID);
+
         for (Job job : expiredJobs) {
             job.setStatus(JobStatus.CLOSED);
             job.setUpdatedAt(now);
             jobRepository.save(job);
+            if (publicJobCache != null) {
+                publicJobCache.evict(job.getId());
+            }
 
             log.info("Automatically closed job ID: {}", job.getId());
 

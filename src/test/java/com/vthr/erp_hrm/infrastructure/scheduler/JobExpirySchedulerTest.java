@@ -12,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
@@ -24,6 +26,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,13 +44,20 @@ class JobExpirySchedulerTest {
     @Mock
     private EmailQueueService emailQueueService;
 
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private Cache publicJobCache;
+
     private final Clock clock = Clock.fixed(Instant.parse("2026-04-01T00:00:00Z"), ZoneOffset.UTC);
 
     private JobExpiryScheduler scheduler;
 
     @BeforeEach
     void setup() {
-        this.scheduler = new JobExpiryScheduler(jobRepository, userRepository, emailQueueService, clock);
+        when(cacheManager.getCache(anyString())).thenReturn(publicJobCache);
+        this.scheduler = new JobExpiryScheduler(jobRepository, userRepository, emailQueueService, cacheManager, clock);
         ReflectionTestUtils.setField(scheduler, "expiryEmailEnabled", false);
     }
 

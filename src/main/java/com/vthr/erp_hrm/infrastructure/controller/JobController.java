@@ -8,16 +8,24 @@ import com.vthr.erp_hrm.infrastructure.controller.request.JobUpdateRequest;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApiResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.JobFilterOptionsResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.JobResponse;
+import com.vthr.erp_hrm.infrastructure.controller.response.PublicJobsKeysetResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -43,6 +51,37 @@ public class JobController {
         return ResponseEntity.ok(ApiResponse.success(jobs, "Fetched open jobs successfully"));
     }
 
+    /**
+     * Feed việc làm OPEN: phân trang keyset (afterCreatedAt + afterId của tin cuối trang trước).
+     * Trang đầu: không gửi after*. Dùng cho tải thêm / cuộn vô hạn, tránh OFFSET lớn.
+     */
+    @GetMapping("/feed")
+    public ResponseEntity<ApiResponse<PublicJobsKeysetResponse>> getOpenJobsFeedKeyset(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String industry,
+            @RequestParam(required = false) String jobType,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String skill,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime afterCreatedAt,
+            @RequestParam(required = false) UUID afterId,
+            @RequestParam(defaultValue = "10") int size) {
+        if ((afterCreatedAt == null) != (afterId == null)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "afterCreatedAt và afterId phải cùng có hoặc cùng không");
+        }
+        int n = Math.min(100, Math.max(1, size));
+        var slice = jobService.getOpenJobsKeyset(q, city, industry, jobType, level, skill, afterCreatedAt, afterId, n);
+        PublicJobsKeysetResponse body = PublicJobsKeysetResponse.builder()
+                .content(slice.jobs().stream().map(JobResponse::fromDomain).toList())
+                .hasNext(slice.hasNext())
+                .nextAfterCreatedAt(slice.nextAfterCreatedAt() != null ? slice.nextAfterCreatedAt().toString() : null)
+                .nextAfterId(slice.nextAfterId() != null ? slice.nextAfterId().toString() : null)
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(body, "Fetched open jobs (keyset)"));
+    }
+
     @GetMapping("/filter-options")
     public ResponseEntity<ApiResponse<JobFilterOptionsResponse>> getOpenJobFilterOptions() {
         var o = jobService.getOpenJobFilterOptions();
@@ -52,7 +91,18 @@ public class JobController {
                 .jobTypes(o.jobTypes())
                 .levels(o.levels())
                 .build();
-        return ResponseEntity.ok(ApiResponse.success(body, "Fetched job filter options"));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(5, TimeUnit.MINUTES).cachePublic())
+                .body(ApiResponse.success(body, "Fetched job filter options"));
+    }
+
+    /** Công ty có ít nhất một tin OPEN — dùng cho menu Công ty (career). Không dùng /{id} để tránh xung đột route. */
+    @GetMapping("/meta/career-companies")
+    public ResponseEntity<ApiResponse<List<String>>> getCareerCompanyNames() {
+        List<String> names = jobService.getCareerCompanyNames();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(5, TimeUnit.MINUTES).cachePublic())
+                .body(ApiResponse.success(names, "Fetched career company names"));
     }
 
     @GetMapping("/{id}")
@@ -111,7 +161,7 @@ public class JobController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<JobResponse>> createJob(
             @Valid @RequestBody JobCreateRequest request,
             Authentication authentication) {
@@ -163,7 +213,7 @@ public class JobController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<JobResponse>> updateJob(
             @PathVariable UUID id,
             @RequestBody JobUpdateRequest request,

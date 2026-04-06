@@ -28,16 +28,14 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        Path workDir = Path.of(System.getProperty("user.dir"));
-        Path dotenvLocalPath = workDir.resolve(DOTENV_LOCAL_FILENAME);
-        Path dotenvPath = workDir.resolve(DOTENV_FILENAME);
-
-        // Priority: .env.local (dev) > .env
-        Path target = Files.exists(dotenvLocalPath) && Files.isRegularFile(dotenvLocalPath)
-                ? dotenvLocalPath
-                : dotenvPath;
-
-        if (!Files.exists(target) || !Files.isRegularFile(target)) {
+        Path target = resolveDotenvFile();
+        if (target == null) {
+            log.warn(
+                    "Không tìm thấy {} / {} (đã tìm từ user.dir={} lên các thư mục cha). "
+                            + "SMTP/MAIL trong .env sẽ không được nạp — đặt Working Directory = thư mục gốc dự án hoặc export biến môi trường.",
+                    DOTENV_LOCAL_FILENAME,
+                    DOTENV_FILENAME,
+                    Path.of(System.getProperty("user.dir")).toAbsolutePath());
             return;
         }
 
@@ -64,7 +62,7 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
                 }
             }
         } catch (IOException e) {
-            log.warn("Failed to load .env file: {}", dotenvPath, e);
+            log.warn("Failed to load .env file: {}", target, e);
             return;
         }
 
@@ -75,6 +73,29 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
         // Highest precedence (but below system props/env vars if they already exist)
         environment.getPropertySources().addFirst(new MapPropertySource("dotenvFile", props));
         log.info("Loaded {} properties from {}", props.size(), target);
+    }
+
+    /**
+     * Tìm .env.local / .env từ user.dir và đi lên tối đa vài cấp (IDE đôi khi chạy với cwd = frontend, module con…).
+     */
+    private Path resolveDotenvFile() {
+        Path dir = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
+        for (int depth = 0; depth < 10; depth++) {
+            Path local = dir.resolve(DOTENV_LOCAL_FILENAME);
+            if (Files.exists(local) && Files.isRegularFile(local)) {
+                return local;
+            }
+            Path env = dir.resolve(DOTENV_FILENAME);
+            if (Files.exists(env) && Files.isRegularFile(env)) {
+                return env;
+            }
+            Path parent = dir.getParent();
+            if (parent == null || parent.equals(dir)) {
+                break;
+            }
+            dir = parent;
+        }
+        return null;
     }
 
     private boolean isAllowedKey(String key) {

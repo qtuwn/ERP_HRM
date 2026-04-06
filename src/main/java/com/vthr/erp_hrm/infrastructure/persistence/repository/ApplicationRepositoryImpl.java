@@ -9,7 +9,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,6 +49,20 @@ public class ApplicationRepositoryImpl implements ApplicationRepository {
     }
 
     @Override
+    public Map<String, Long> countApplicationsGroupedByStatus() {
+        Map<String, Long> map = new HashMap<>();
+        for (Object[] row : jpaRepository.countGroupedByStatus()) {
+            if (row == null || row.length < 2 || row[0] == null) {
+                continue;
+            }
+            String status = String.valueOf(row[0]);
+            long n = row[1] instanceof Number num ? num.longValue() : 0L;
+            map.put(status, n);
+        }
+        return map;
+    }
+
+    @Override
     public Page<Application> findByCandidateId(UUID candidateId, Pageable pageable) {
         return jpaRepository.findByCandidateId(candidateId, pageable).map(ApplicationMapper::toDomain);
     }
@@ -54,6 +70,16 @@ public class ApplicationRepositoryImpl implements ApplicationRepository {
     @Override
     public boolean existsByJobIdAndCandidateId(UUID jobId, UUID candidateId) {
         return jpaRepository.existsByJobIdAndCandidateId(jobId, candidateId);
+    }
+
+    @Override
+    public Optional<Application> findByJobIdAndCandidateId(UUID jobId, UUID candidateId) {
+        return jpaRepository.findByJobIdAndCandidateId(jobId, candidateId).map(ApplicationMapper::toDomain);
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
     }
 
     @Override

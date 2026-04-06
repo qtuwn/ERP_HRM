@@ -4,6 +4,7 @@ import com.vthr.erp_hrm.core.model.AuthTokens;
 import com.vthr.erp_hrm.core.model.AccountStatus;
 import com.vthr.erp_hrm.core.model.Company;
 import com.vthr.erp_hrm.core.model.EmailVerificationToken;
+import com.vthr.erp_hrm.core.model.PasswordResetToken;
 import com.vthr.erp_hrm.core.model.RefreshToken;
 import com.vthr.erp_hrm.core.model.Role;
 import com.vthr.erp_hrm.core.model.User;
@@ -11,7 +12,9 @@ import com.vthr.erp_hrm.core.repository.EmailVerificationTokenRepository;
 import com.vthr.erp_hrm.core.repository.PasswordResetTokenRepository;
 import com.vthr.erp_hrm.core.repository.RefreshTokenRepository;
 import com.vthr.erp_hrm.core.repository.UserRepository;
+import com.vthr.erp_hrm.core.service.AuditLogService;
 import com.vthr.erp_hrm.core.service.CompanyService;
+import com.vthr.erp_hrm.core.service.PasswordResetBruteForceProtection;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,12 +27,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +64,12 @@ public class AuthServiceImplTest {
     @Mock
     private CompanyService companyService;
 
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private PasswordResetBruteForceProtection passwordResetBruteForceProtection;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -66,6 +77,9 @@ public class AuthServiceImplTest {
     void setUp() {
         ReflectionTestUtils.setField(authService, "otpExpirationMinutes", 10L);
         ReflectionTestUtils.setField(authService, "refreshExpirationMs", 60000L);
+        ReflectionTestUtils.setField(authService, "passwordResetCooldownSeconds", 60L);
+        ReflectionTestUtils.setField(authService, "passwordResetLinkExpirationHours", 1L);
+        ReflectionTestUtils.setField(authService, "publicWebUrl", "http://localhost:8080");
     }
 
     @Test
@@ -341,5 +355,56 @@ public class AuthServiceImplTest {
 
         assertTrue(token.isRevoked());
         verify(refreshTokenRepository).save(token);
+    }
+
+    @Test
+    void requestForgotPasswordOtp_rejectsWhenWithinCooldown() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder()
+                .id(uid)
+                .email("cool@example.com")
+                .fullName("C")
+                .status(AccountStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+        when(userRepository.findByEmail("cool@example.com")).thenReturn(Optional.of(user));
+        PasswordResetToken recent = PasswordResetToken.builder()
+                .userId(uid)
+                .createdAt(ZonedDateTime.now().minusSeconds(15))
+                .build();
+        when(passwordResetTokenRepository.findLatestByUserId(uid)).thenReturn(Optional.of(recent));
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> authService.requestForgotPasswordOtp("cool@example.com"));
+        assertTrue(ex.getMessage().contains("Vui long cho"));
+        verify(emailQueueService, never()).enqueueEmail(any(), any(), any(), any());
+    }
+
+    @Test
+    void requestForgotPasswordMagicLink_enqueuesLinkTemplate() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder()
+                .id(uid)
+                .email("link@example.com")
+                .fullName("L")
+                .status(AccountStatus.ACTIVE)
+                .isActive(true)
+                .emailVerified(true)
+                .build();
+        when(userRepository.findByEmail("link@example.com")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.findLatestByUserId(uid)).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.findActiveByUserId(uid)).thenReturn(Collections.emptyList());
+        when(jwtService.hashToken(anyString())).thenReturn("hashed");
+
+        authService.requestForgotPasswordMagicLink("link@example.com");
+
+        verify(passwordResetBruteForceProtection).assertForgotPasswordRequestAllowed(any());
+        verify(emailQueueService).enqueueEmail(
+                eq("link@example.com"),
+                anyString(),
+                eq("forgot_password_link"),
+                argThat(m -> m.containsKey("resetUrl") && m.get("resetUrl").toString().contains("token=")));
+        verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
     }
 }

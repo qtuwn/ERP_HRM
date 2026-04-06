@@ -356,16 +356,13 @@ export function ApplyPage() {
                 Ghi chú cho bộ phận tuyển dụng (Cover Letter)
               </label>
               <textarea
-                value={note}
+                value={note == null ? '' : note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={5}
                 className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] outline-none text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 resize-none"
                 placeholder="Viết giới thiệu ngắn về bản thân..."
               />
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              (Hiện backend chưa nhận field này; UI giữ lại để parity, sẽ wire API sau nếu bạn muốn.)
-            </p>
           </div>
         ) : null}
 

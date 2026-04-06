@@ -28,6 +28,11 @@ public class PasswordResetTokenRepositoryImpl implements PasswordResetTokenRepos
     }
 
     @Override
+    public Optional<PasswordResetToken> findLatestByUserId(UUID userId) {
+        return jpaRepository.findTopByUserIdOrderByCreatedAtDesc(userId).map(mapper::toDomain);
+    }
+
+    @Override
     public PasswordResetToken save(PasswordResetToken token) {
         return mapper.toDomain(jpaRepository.save(mapper.toEntity(token)));
     }

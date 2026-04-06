@@ -13,6 +13,7 @@ import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.storage.SignedUrlService;
 import com.vthr.erp_hrm.infrastructure.websocket.RealtimeEventService;
 import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
+import com.vthr.erp_hrm.core.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,6 +58,10 @@ class ApplicationServiceImplApplyTest {
     private SignedUrlService signedUrlService;
     @Mock
     private WebhookOutboxService webhookOutboxService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private Clock clock;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;
@@ -69,7 +76,7 @@ class ApplicationServiceImplApplyTest {
         UUID jobId = UUID.randomUUID();
         UUID candidateId = UUID.randomUUID();
         when(jobService.getJobById(jobId)).thenReturn(Job.builder().id(jobId).status(JobStatus.OPEN).title("T").build());
-        when(applicationRepository.existsByJobIdAndCandidateId(jobId, candidateId)).thenReturn(false);
+        when(applicationRepository.findByJobIdAndCandidateId(jobId, candidateId)).thenReturn(Optional.empty());
         UUID savedId = UUID.randomUUID();
         when(applicationRepository.save(any(Application.class))).thenAnswer(inv -> {
             Application a = inv.getArgument(0);
@@ -92,7 +99,7 @@ class ApplicationServiceImplApplyTest {
         UUID jobId = UUID.randomUUID();
         UUID candidateId = UUID.randomUUID();
         when(jobService.getJobById(jobId)).thenReturn(Job.builder().id(jobId).status(JobStatus.OPEN).title("T").build());
-        when(applicationRepository.existsByJobIdAndCandidateId(jobId, candidateId)).thenReturn(false);
+        when(applicationRepository.findByJobIdAndCandidateId(jobId, candidateId)).thenReturn(Optional.empty());
         UUID savedId = UUID.randomUUID();
         when(applicationRepository.save(any(Application.class))).thenAnswer(inv -> {
             Application a = inv.getArgument(0);

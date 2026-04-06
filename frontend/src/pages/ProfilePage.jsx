@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { getUser, setUser as persistUser } from '../lib/storage.js'
+import { getUser, isUserAccountActive, setUser as persistUser } from '../lib/storage.js'
 import { api } from '../lib/api.js'
 
 export function ProfilePage() {
@@ -23,6 +23,7 @@ export function ProfilePage() {
   if (!user) return <Navigate to="/login" replace state={{ from: '/profile' }} />
 
   const isCandidate = String(user?.role || '').toUpperCase() === 'CANDIDATE'
+  const accountActive = isUserAccountActive(user)
 
   useEffect(() => {
     let alive = true
@@ -169,12 +170,12 @@ export function ProfilePage() {
                 <span
                   className={[
                     'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
-                    user?.isActive
+                    accountActive
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
                   ].join(' ')}
                 >
-                  {user?.isActive ? 'Đang hoạt động' : 'Đã khóa'}
+                  {accountActive ? 'Đang hoạt động' : 'Đã khóa'}
                 </span>
               </div>
               {profileLoading ? <div className="mt-2">Đang tải hồ sơ…</div> : null}
@@ -286,6 +287,23 @@ export function ProfilePage() {
               {pwLoading ? 'Đang đổi…' : 'Đổi mật khẩu'}
             </button>
           </form>
+        </div>
+      </div>
+
+      <div className="mt-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Phiên đăng nhập</h3>
+        </div>
+        <div className="px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Xem các phiên đang hoạt động, thu hồi từng thiết bị hoặc đăng xuất toàn bộ.
+          </p>
+          <Link
+            to="/profile/sessions"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Quản lý phiên →
+          </Link>
         </div>
       </div>
 

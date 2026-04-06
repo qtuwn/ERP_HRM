@@ -7,8 +7,10 @@ import com.vthr.erp_hrm.infrastructure.persistence.mapper.RefreshTokenMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -31,5 +33,17 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     @Override
     public void revokeAllUserTokens(UUID userId) {
         jpaRepository.revokeAllTokensByUserId(userId);
+    }
+
+    @Override
+    public List<RefreshToken> findByUserIdOrderByCreatedAtDesc(UUID userId) {
+        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public int revokeByIdForUser(UUID tokenId, UUID userId) {
+        return jpaRepository.revokeByIdAndUserId(tokenId, userId);
     }
 }

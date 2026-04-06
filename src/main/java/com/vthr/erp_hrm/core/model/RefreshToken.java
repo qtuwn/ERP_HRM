@@ -19,4 +19,6 @@ public class RefreshToken {
     private ZonedDateTime expiresAt;
     private boolean revoked;
     private ZonedDateTime createdAt;
+    private String clientIp;
+    private String userAgent;
 }

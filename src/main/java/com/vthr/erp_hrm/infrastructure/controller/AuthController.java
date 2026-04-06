@@ -10,6 +10,7 @@ import com.vthr.erp_hrm.infrastructure.controller.request.LoginRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.LogoutRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.RefreshTokenRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.RegisterRequest;
+import com.vthr.erp_hrm.infrastructure.controller.request.ResetPasswordWithLinkRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.ResetPasswordWithOtpRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.ResendVerificationRequest;
 import com.vthr.erp_hrm.infrastructure.controller.request.VerifyEmailOtpRequest;
@@ -18,6 +19,8 @@ import com.vthr.erp_hrm.infrastructure.controller.response.LoginResponse;
 import com.vthr.erp_hrm.infrastructure.controller.response.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +34,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final CompanyRepository companyRepository;
+
+    @Value("${app.auth.password-reset-email-enabled:false}")
+    private boolean passwordResetEmailEnabled;
+
+    private static ResponseEntity<ApiResponse<Void>> passwordResetEmailUnavailable() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .data(null)
+                        .message("Tính năng đặt lại mật khẩu qua email đang được hoàn thiện.")
+                        .build());
+    }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
@@ -126,14 +141,39 @@ public class AuthController {
 
     @PostMapping("/forgot-password/request")
     public ResponseEntity<ApiResponse<Void>> requestForgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        if (!passwordResetEmailEnabled) {
+            return passwordResetEmailUnavailable();
+        }
         authService.requestForgotPasswordOtp(request.getEmail());
         return ResponseEntity.ok(ApiResponse.success(null, "OTP đặt lại mật khẩu đã được gửi"));
+    }
+
+    @PostMapping("/forgot-password/request-link")
+    public ResponseEntity<ApiResponse<Void>> requestForgotPasswordLink(@Valid @RequestBody ForgotPasswordRequest request) {
+        if (!passwordResetEmailEnabled) {
+            return passwordResetEmailUnavailable();
+        }
+        authService.requestForgotPasswordMagicLink(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(null, "Link đặt lại mật khẩu đã được gửi qua email"));
     }
 
     @PostMapping("/forgot-password/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmForgotPassword(
             @Valid @RequestBody ResetPasswordWithOtpRequest request) {
+        if (!passwordResetEmailEnabled) {
+            return passwordResetEmailUnavailable();
+        }
         authService.resetPasswordWithOtp(request.getEmail(), request.getOtp(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Đặt lại mật khẩu thành công"));
+    }
+
+    @PostMapping("/forgot-password/confirm-link")
+    public ResponseEntity<ApiResponse<Void>> confirmForgotPasswordLink(
+            @Valid @RequestBody ResetPasswordWithLinkRequest request) {
+        if (!passwordResetEmailEnabled) {
+            return passwordResetEmailUnavailable();
+        }
+        authService.resetPasswordWithMagicLink(request.getToken(), request.getNewPassword());
         return ResponseEntity.ok(ApiResponse.success(null, "Đặt lại mật khẩu thành công"));
     }
 }

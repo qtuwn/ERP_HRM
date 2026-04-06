@@ -8,6 +8,7 @@ import com.vthr.erp_hrm.core.repository.JobRepository;
 import com.vthr.erp_hrm.core.repository.UserRepository;
 import com.vthr.erp_hrm.core.service.ApplicationAccessService;
 import com.vthr.erp_hrm.core.service.ApplicationService;
+import com.vthr.erp_hrm.core.service.NotificationService;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +50,8 @@ class InterviewServiceImplAccessTest {
 
     @Mock
     private ApplicationAccessService applicationAccessService;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private InterviewServiceImpl interviewService;

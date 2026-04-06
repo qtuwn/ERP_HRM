@@ -6,14 +6,14 @@ import { api } from '../lib/api.js'
 import { clearSession, getUser, normalizeUserRole } from '../lib/storage.js'
 import { applyTheme, getStoredTheme } from '../lib/theme.js'
 import { ChatWidget } from './ChatWidget.jsx'
+import { JobCategoryMegaMenu } from './JobCategoryMegaMenu.jsx'
+import { CompanyCareerMegaMenu } from './CompanyCareerMegaMenu.jsx'
 import LogoImage from '../assets/LOGO.png'
 
-function navBase(isActive) {
+function navBaseBrand(isActive) {
   return [
     'rounded-lg px-3 py-2 text-sm font-medium transition',
-    isActive
-      ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+    isActive ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white',
   ].join(' ')
 }
 
@@ -34,8 +34,18 @@ export function PublicShell() {
     },
     staleTime: 5 * 60_000,
   })
-  const industries = Array.isArray(filterOpts?.industries) ? filterOpts.industries.filter(Boolean) : []
 
+  const { data: notifUnread = 0 } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: async () => {
+      const j = await api.get('/api/users/me/notifications/unread-count')
+      const n = Number(j?.data?.count)
+      return Number.isFinite(n) ? n : 0
+    },
+    enabled: candidate && Boolean(user),
+    staleTime: 30_000,
+    refetchInterval: 45_000,
+  })
   useEffect(() => {
     applyTheme(getStoredTheme())
   }, [])
@@ -72,102 +82,79 @@ export function PublicShell() {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 font-sans antialiased text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative flex min-h-screen w-full flex-col bg-slate-50 font-sans antialiased text-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <a
         href="#main-content"
         className="absolute left-[-9999px] top-0 z-[100] rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow-lg focus:fixed focus:left-4 focus:top-4 focus:outline-none focus:ring-2 focus:ring-white/50"
       >
         Bỏ qua đến nội dung chính
       </a>
-      <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+      <nav className="sticky top-0 z-50 border-b border-[#1d4ed8] bg-[#2563eb] shadow-sm dark:border-[#1e3a8a] dark:bg-[#1e40af]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between gap-4">
-            <Link to="/" className="flex shrink-0 items-center gap-2">
-              <img src={LogoImage} alt="VTHR Logo" className="hidden h-9 w-auto object-contain md:block" />
-              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">VTHR</span>
-            </Link>
+          <div className="flex h-16 items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+              <Link to="/" className="flex shrink-0 items-center gap-2">
+                <img src={LogoImage} alt="VTHR Logo" className="hidden h-9 w-auto object-contain md:block" />
+                <span className="text-lg font-bold tracking-tight text-white">VTHR</span>
+              </Link>
+              <span className="hidden h-7 w-px shrink-0 bg-white/25 md:block" aria-hidden />
 
-            <div className="hidden items-center gap-2 md:flex">
-              <NavLink to="/jobs" className={({ isActive }) => navBase(isActive)}>
-                Việc làm
-              </NavLink>
+              <div className="hidden min-w-0 items-center gap-1 md:flex">
+                <NavLink to="/jobs" className={({ isActive }) => navBaseBrand(isActive)}>
+                  Việc làm
+                </NavLink>
+                <JobCategoryMegaMenu filterOpts={filterOpts} variant="desktop" brandNav />
+                <CompanyCareerMegaMenu brandNav />
+              </div>
+            </div>
 
-              <details className="group relative">
-                <summary
-                  className={[
-                    'cursor-pointer list-none rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition marker:content-none hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-                    '[&::-webkit-details-marker]:hidden',
-                  ].join(' ')}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Danh mục
-                    <ChevronDown className="h-4 w-4 opacity-70 group-open:rotate-180 transition-transform" />
-                  </span>
-                </summary>
-                <div className="absolute left-0 z-50 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                  <Link
-                    to="/jobs"
-                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    Tất cả việc làm
-                  </Link>
-                  {industries.length === 0 ? (
-                    <div className="px-4 py-2 text-xs text-slate-500">Đang tải danh mục…</div>
-                  ) : (
-                    industries.map((ind) => (
-                      <Link
-                        key={ind}
-                        to={`/jobs?industry=${encodeURIComponent(ind)}`}
-                        className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
-                      >
-                        {ind}
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </details>
-
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white transition hover:bg-white/10"
                 title="Chế độ sáng/tối"
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
 
               {!user ? (
-                <div className="ml-2 flex items-center gap-2">
+                <div className="flex items-center gap-2 sm:ml-1">
                   <Link
                     to="/login"
-                    className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+                    className="inline-flex items-center justify-center rounded-lg border border-white/80 bg-transparent px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
                     Đăng nhập
                   </Link>
                   <Link
                     to="/register"
-                    className="inline-flex items-center justify-center rounded-lg border-2 border-[#2563eb] bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] transition hover:bg-[#2563eb] hover:text-white dark:bg-slate-900 dark:hover:bg-[#2563eb]"
+                    className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] shadow-sm transition hover:bg-white/90"
                   >
                     Đăng ký
                   </Link>
                 </div>
               ) : (
-                <div className="ml-2 flex items-center gap-2">
+                <div className="flex items-center gap-2 sm:ml-1">
                   {candidate ? (
                     <Link
                       to="/notifications"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white transition hover:bg-white/10"
                       title="Thông báo"
                     >
                       <Bell className="h-4 w-4" />
+                      {notifUnread > 0 ? (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                          {notifUnread > 99 ? '99+' : notifUnread}
+                        </span>
+                      ) : null}
                     </Link>
                   ) : null}
                   {user && ['HR', 'ADMIN', 'COMPANY'].includes(user.role) ? (
                     <Link
                       to="/dashboard"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#2563eb]/40 bg-[#2563eb]/5 px-3 py-2 text-sm font-semibold text-[#2563eb] transition hover:bg-[#2563eb]/10 dark:border-[#2563eb]/50 dark:text-blue-300 dark:hover:bg-[#2563eb]/20"
+                      className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-semibold text-white transition hover:bg-white/25"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      <ExternalLink className="h-4 w-4 shrink-0" />
                       Vào bảng điều khiển
                     </Link>
                   ) : null}
@@ -177,15 +164,15 @@ export function PublicShell() {
                       to="/messages"
                       className={({ isActive }) =>
                         [
-                          'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition',
+                          'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition',
                           isActive || location.pathname.startsWith('/messages')
-                            ? 'border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb] dark:border-[#2563eb]/60 dark:bg-[#2563eb]/20 dark:text-blue-200'
-                            : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800',
+                            ? 'border-white bg-white/20 text-white'
+                            : 'border-white/30 text-white/90 hover:bg-white/10 hover:text-white',
                         ].join(' ')
                       }
                     >
                       <MessageCircle className="h-4 w-4 shrink-0" />
-                      <span>Tin nhắn</span>
+                      <span className="whitespace-nowrap">Tin nhắn</span>
                     </NavLink>
                   ) : null}
 
@@ -194,17 +181,17 @@ export function PublicShell() {
                       type="button"
                       onClick={() => setProfileOpen((v) => !v)}
                       onBlur={() => setTimeout(() => setProfileOpen(false), 120)}
-                      className="flex max-w-[240px] items-center gap-2 rounded-lg border border-slate-200 py-1.5 pl-1.5 pr-2 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                      className="flex h-10 max-w-[220px] min-w-0 items-center gap-2 rounded-lg border border-white/30 px-2.5 transition hover:bg-white/10 sm:max-w-[240px]"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2563eb]/15 text-sm font-semibold text-[#2563eb] dark:bg-[#2563eb]/30 dark:text-white">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-semibold text-white">
                         {(user.fullName || user.email || '?').charAt(0)}
                       </span>
                       <span className="min-w-0 flex-1 text-left">
-                        <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">
+                        <span className="block truncate text-sm font-semibold leading-none text-white">
                           {user.fullName || user.email}
                         </span>
                       </span>
-                      <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                      <ChevronDown className="h-4 w-4 shrink-0 text-white/70" />
                     </button>
 
                     {profileOpen ? (
@@ -254,7 +241,7 @@ export function PublicShell() {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white"
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
@@ -262,10 +249,10 @@ export function PublicShell() {
                 <Link
                   to="/messages"
                   className={[
-                    'inline-flex h-9 w-9 items-center justify-center rounded-lg border text-slate-600 dark:text-slate-300',
+                    'inline-flex h-9 w-9 items-center justify-center rounded-lg border text-white',
                     location.pathname.startsWith('/messages')
-                      ? 'border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb] dark:text-blue-300'
-                      : 'border-slate-200 dark:border-slate-700',
+                      ? 'border-white bg-white/20'
+                      : 'border-white/30 hover:bg-white/10',
                   ].join(' ')}
                   title="Tin nhắn"
                 >
@@ -275,7 +262,7 @@ export function PublicShell() {
               <button
                 type="button"
                 onClick={() => setMobileOpen((v) => !v)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white"
                 aria-label="Menu"
               >
                 <Menu className="h-5 w-5" />
@@ -284,45 +271,35 @@ export function PublicShell() {
           </div>
 
           {mobileOpen ? (
-            <div className="border-t border-slate-200 py-4 dark:border-slate-800 md:hidden">
+            <div className="border-t border-white/20 py-4 md:hidden">
               <Link
                 to="/jobs"
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
                 onClick={() => setMobileOpen(false)}
               >
                 Việc làm
               </Link>
-              <p className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Danh mục</p>
-              <Link
-                to="/jobs"
-                className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                onClick={() => setMobileOpen(false)}
-              >
-                Tất cả
-              </Link>
-              {industries.map((ind) => (
-                <Link
-                  key={ind}
-                  to={`/jobs?industry=${encodeURIComponent(ind)}`}
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {ind}
-                </Link>
-              ))}
+              <p className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-white/70">Danh mục việc làm</p>
+              <JobCategoryMegaMenu
+                filterOpts={filterOpts}
+                variant="mobile"
+                brandNav
+                onNavigate={() => setMobileOpen(false)}
+              />
+              <CompanyCareerMegaMenu variant="mobile" brandNav onNavigate={() => setMobileOpen(false)} />
 
               {!user ? (
                 <div className="mt-3 flex flex-col gap-2">
                   <Link
                     to="/login"
-                    className="rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold"
+                    className="rounded-lg border border-white/80 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/10"
                     onClick={() => setMobileOpen(false)}
                   >
                     Đăng nhập
                   </Link>
                   <Link
                     to="/register"
-                    className="rounded-lg border-2 border-[#2563eb] px-4 py-2.5 text-center text-sm font-semibold text-[#2563eb]"
+                    className="rounded-lg bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#2563eb] hover:bg-white/90"
                     onClick={() => setMobileOpen(false)}
                   >
                     Đăng ký
@@ -334,7 +311,7 @@ export function PublicShell() {
                     <>
                       <Link
                         to="/messages"
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white hover:bg-white/10"
                         onClick={() => setMobileOpen(false)}
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -342,18 +319,23 @@ export function PublicShell() {
                       </Link>
                       <Link
                         to="/notifications"
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white hover:bg-white/10"
                         onClick={() => setMobileOpen(false)}
                       >
                         <Bell className="h-4 w-4" />
                         Thông báo
+                        {notifUnread > 0 ? (
+                          <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                            {notifUnread > 99 ? '99+' : notifUnread}
+                          </span>
+                        ) : null}
                       </Link>
                     </>
                   ) : null}
                   {user && ['HR', 'ADMIN', 'COMPANY'].includes(user.role) ? (
                     <Link
                       to="/dashboard"
-                      className="flex items-center gap-2 rounded-lg border border-[#2563eb]/40 bg-[#2563eb]/5 px-3 py-2 text-sm font-semibold text-[#2563eb]"
+                      className="flex items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25"
                       onClick={() => setMobileOpen(false)}
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -362,14 +344,14 @@ export function PublicShell() {
                   ) : null}
                   <Link
                     to="/candidate/applications"
-                    className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="block rounded-lg px-3 py-2 text-sm text-white hover:bg-white/10"
                     onClick={() => setMobileOpen(false)}
                   >
                     Ứng tuyển của tôi
                   </Link>
                   <Link
                     to="/profile"
-                    className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="block rounded-lg px-3 py-2 text-sm text-white hover:bg-white/10"
                     onClick={() => setMobileOpen(false)}
                   >
                     Cài đặt tài khoản
@@ -380,7 +362,7 @@ export function PublicShell() {
                       setMobileOpen(false)
                       logout()
                     }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600"
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-200 hover:bg-white/10"
                   >
                     Đăng xuất
                   </button>
@@ -391,7 +373,7 @@ export function PublicShell() {
         </div>
       </nav>
 
-      <main id="main-content" className="w-full scroll-mt-16" tabIndex={-1}>
+      <main id="main-content" className="w-full min-w-0 flex-1 scroll-mt-16" tabIndex={-1}>
         <Outlet />
       </main>
 

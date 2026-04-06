@@ -35,7 +35,7 @@ public class InterviewController {
     }
 
     @PostMapping("/applications/{applicationId}/interviews")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<Interview>> scheduleInterview(
             @PathVariable UUID applicationId,
             @RequestBody ScheduleInterviewRequest request,
@@ -52,7 +52,7 @@ public class InterviewController {
     }
 
     @GetMapping("/applications/{applicationId}/interviews")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'CANDIDATE')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY', 'CANDIDATE')")
     public ResponseEntity<ApiResponse<List<Interview>>> getInterviews(
             @PathVariable UUID applicationId,
             Authentication authentication) {
@@ -65,7 +65,7 @@ public class InterviewController {
     }
 
     @PatchMapping("/interviews/{interviewId}/status")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('HR', 'COMPANY')")
     public ResponseEntity<ApiResponse<Interview>> updateInterviewStatus(
             @PathVariable UUID interviewId,
             @RequestBody UpdateInterviewStatusRequest request,

@@ -15,13 +15,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import com.vthr.erp_hrm.core.model.AIEvaluation;
 import com.vthr.erp_hrm.core.model.User;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse;
+import com.vthr.erp_hrm.infrastructure.controller.response.WithdrawalEligibilityResponse;
 import com.vthr.erp_hrm.infrastructure.webhook.WebhookOutboxService;
+import com.vthr.erp_hrm.core.model.NotificationType;
+import com.vthr.erp_hrm.core.service.NotificationService;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +54,11 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final EmailQueueService emailQueueService;
     private final com.vthr.erp_hrm.infrastructure.storage.SignedUrlService signedUrlService;
     private final WebhookOutboxService webhookOutboxService;
+    private final NotificationService notificationService;
+    private final Clock clock;
+
+    private static final Set<ApplicationStatus> WITHDRAWABLE_STATUSES =
+            EnumSet.of(ApplicationStatus.APPLIED, ApplicationStatus.AI_SCREENING, ApplicationStatus.HR_REVIEW);
 
     @Override
     public Application applyForJob(UUID jobId, UUID candidateId, String cvUrl) {
@@ -51,8 +68,13 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new RuntimeException("Cannot apply for a job that is not OPEN");
         }
 
-        if (applicationRepository.existsByJobIdAndCandidateId(jobId, candidateId)) {
-            throw new RuntimeException("You have already applied for this job");
+        var existingPair = applicationRepository.findByJobIdAndCandidateId(jobId, candidateId);
+        if (existingPair.isPresent()) {
+            if (existingPair.get().getStatus() == ApplicationStatus.WITHDRAWN) {
+                applicationRepository.deleteById(existingPair.get().getId());
+            } else {
+                throw new RuntimeException("You have already applied for this job");
+            }
         }
 
         Application application = Application.builder()
@@ -87,40 +109,55 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     public java.util.List<com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse> getKanbanApplications(
             UUID jobId) {
-        return applicationRepository.findByJobId(jobId).stream().map(app -> {
-            com.vthr.erp_hrm.core.model.User candidate = userRepository.findById(app.getCandidateId()).orElse(null);
-            String candidateName = candidate != null ? candidate.getFullName() : "Unknown";
-            String candidateEmail = candidate != null ? candidate.getEmail() : "Unknown";
+        List<Application> apps = applicationRepository.findByJobId(jobId).stream()
+                .filter(app -> app.getStatus() != ApplicationStatus.WITHDRAWN)
+                .collect(Collectors.toList());
+        if (apps.isEmpty()) {
+            return List.of();
+        }
 
-            Integer aiScore = null;
-            String aiSuitability = null;
-            com.vthr.erp_hrm.core.model.AIEvaluation eval = aiEvaluationRepository.findByApplicationId(app.getId())
-                    .orElse(null);
-            if (eval != null) {
-                aiScore = eval.getScore();
-                // Worker đang lưu suitability vào discrepancy
-                aiSuitability = eval.getDiscrepancy();
-            }
+        List<UUID> candidateIds = apps.stream().map(Application::getCandidateId).distinct().collect(Collectors.toList());
+        List<UUID> applicationIds = apps.stream().map(Application::getId).collect(Collectors.toList());
 
-            return com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse.builder()
-                    .id(app.getId())
-                    .candidateId(app.getCandidateId())
-                    .candidateName(candidateName)
-                    .candidateEmail(candidateEmail)
-                    .status(app.getStatus() != null ? app.getStatus().name() : null)
-                    .aiStatus(app.getAiStatus())
-                    .aiScore(aiScore)
-                    .aiSuitability(aiSuitability)
-                    .cvUrl(app.getCvUrl())
-                    .createdAt(app.getCreatedAt())
-                    .build();
-        })
+        Map<UUID, User> userById = userRepository.findAllById(candidateIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
+
+        Map<UUID, AIEvaluation> evalByAppId = aiEvaluationRepository.findAllByApplicationIdIn(applicationIds).stream()
+                .collect(Collectors.toMap(AIEvaluation::getApplicationId, Function.identity(), (a, b) -> a));
+
+        return apps.stream()
+                .map(app -> {
+                    User candidate = userById.get(app.getCandidateId());
+                    String candidateName = candidate != null ? candidate.getFullName() : "Unknown";
+                    String candidateEmail = candidate != null ? candidate.getEmail() : "Unknown";
+
+                    Integer aiScore = null;
+                    String aiSuitability = null;
+                    AIEvaluation eval = evalByAppId.get(app.getId());
+                    if (eval != null) {
+                        aiScore = eval.getScore();
+                        aiSuitability = eval.getDiscrepancy();
+                    }
+
+                    return com.vthr.erp_hrm.infrastructure.controller.response.KanbanApplicationResponse.builder()
+                            .id(app.getId())
+                            .candidateId(app.getCandidateId())
+                            .candidateName(candidateName)
+                            .candidateEmail(candidateEmail)
+                            .status(app.getStatus() != null ? app.getStatus().name() : null)
+                            .aiStatus(app.getAiStatus())
+                            .aiScore(aiScore)
+                            .aiSuitability(aiSuitability)
+                            .cvUrl(app.getCvUrl())
+                            .createdAt(app.getCreatedAt())
+                            .build();
+                })
                 .sorted((a, b) -> {
                     int scoreA = a.getAiScore() != null ? a.getAiScore() : -1;
                     int scoreB = b.getAiScore() != null ? b.getAiScore() : -1;
                     return Integer.compare(scoreB, scoreA);
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -146,6 +183,10 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (oldStatus == status)
             return application;
 
+        if (oldStatus == ApplicationStatus.WITHDRAWN) {
+            throw new RuntimeException("Application was withdrawn by candidate");
+        }
+
         if (oldStatus == ApplicationStatus.REJECTED || oldStatus == ApplicationStatus.HIRED) {
             throw new RuntimeException("Invalid status transition");
         }
@@ -162,6 +203,19 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build());
 
         realtimeEventService.emitJobEvent(saved.getJobId(), "application:stage_changed", saved);
+        // In-app notification cho ứng viên (không phụ thuộc email).
+        try {
+            notificationService.create(
+                    saved.getCandidateId(),
+                    NotificationType.APPLICATION_STAGE_CHANGED,
+                    "Hồ sơ ứng tuyển đã được cập nhật",
+                    "Giai đoạn mới: " + status.name().replace('_', ' '),
+                    "/candidate/applications?applicationId=" + saved.getId(),
+                    null
+            );
+        } catch (Exception ignored) {
+            // Không làm fail luồng chính nếu notification gặp lỗi.
+        }
         if (status == ApplicationStatus.REJECTED) {
             webhookOutboxService.enqueueForApplicationRejected(saved.getId());
         }
@@ -189,16 +243,10 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public void bulkRejectApplications(java.util.List<UUID> applicationIds, UUID changedBy) {
-        if (applicationIds == null || applicationIds.isEmpty())
-            return;
-        for (UUID id : applicationIds) {
-            try {
-                updateApplicationStatus(id, ApplicationStatus.REJECTED, changedBy, "Bulk Rejected from Kanban");
-            } catch (Exception e) {
-                // Skip if error, but typically works. Could log here.
-            }
-        }
+    public com.vthr.erp_hrm.infrastructure.controller.response.BulkStatusUpdateResponse bulkRejectApplications(
+            java.util.List<UUID> applicationIds, UUID changedBy) {
+        return bulkUpdateApplicationStatus(
+                applicationIds, ApplicationStatus.REJECTED, changedBy, "Bulk Rejected from Kanban");
     }
 
     @Override
@@ -258,13 +306,157 @@ public class ApplicationServiceImpl implements ApplicationService {
         java.util.List<com.vthr.erp_hrm.core.model.Interview> interviews = interviewRepository
                 .findByApplicationId(appId);
 
+        WithdrawalEligibilityResponse withdrawalEligibility = evaluateWithdrawalEligibility(appId, app, job);
+
         return com.vthr.erp_hrm.infrastructure.controller.response.CandidateApplicationDetailResponse
                 .builder()
                 .application(appResponse)
                 .jobTitle(jobTitle)
                 .aiEvaluation(aiEval)
                 .interviews(interviews)
+                .withdrawalEligibility(withdrawalEligibility)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.vthr.erp_hrm.infrastructure.controller.response.RecruiterApplicationReviewResponse getApplicationReviewForRecruiter(
+            UUID appId, UUID userId, Role role) {
+        applicationAccessService.requireRecruiterForManagement(userId, role, appId);
+        Application app = applicationRepository.findById(appId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+
+        com.vthr.erp_hrm.infrastructure.controller.response.ApplicationResponse appResponse =
+                ApplicationResponse.fromDomain(app);
+        if (appResponse.getCvUrl() != null) {
+            appResponse.setCvUrl(signedUrlService.generateSignedUrl("/api/files/cvs", app.getCvUrl()));
+        }
+
+        Job job = jobService.getJobById(app.getJobId());
+        String jobTitle = job.getTitle();
+        appResponse.setJobTitle(jobTitle);
+
+        com.vthr.erp_hrm.core.model.User candidate = userRepository.findById(app.getCandidateId()).orElse(null);
+        com.vthr.erp_hrm.infrastructure.controller.response.RecruiterCandidateProfile profile =
+                com.vthr.erp_hrm.infrastructure.controller.response.RecruiterCandidateProfile.builder()
+                        .id(app.getCandidateId())
+                        .fullName(candidate != null ? candidate.getFullName() : null)
+                        .email(candidate != null ? candidate.getEmail() : null)
+                        .phone(candidate != null ? candidate.getPhone() : null)
+                        .build();
+
+        com.vthr.erp_hrm.core.model.AIEvaluation aiEval = aiEvaluationRepository.findByApplicationId(appId)
+                .orElse(null);
+        java.util.List<com.vthr.erp_hrm.core.model.Interview> interviews = interviewRepository
+                .findByApplicationId(appId);
+
+        return com.vthr.erp_hrm.infrastructure.controller.response.RecruiterApplicationReviewResponse.builder()
+                .application(appResponse)
+                .jobTitle(jobTitle)
+                .candidate(profile)
+                .interviews(interviews)
+                .aiEvaluation(aiEval)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public Application updateHrNote(UUID applicationId, String hrNote, UUID actorId, Role role) {
+        applicationAccessService.requireRecruiterForManagement(actorId, role, applicationId);
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        String normalized = hrNote == null ? null : hrNote.trim();
+        if (normalized != null && normalized.isEmpty()) {
+            normalized = null;
+        }
+        if (normalized != null && normalized.length() > 8000) {
+            throw new RuntimeException("HR note too long");
+        }
+        app.setHrNote(normalized);
+        return applicationRepository.save(app);
+    }
+
+    @Override
+    @Transactional
+    public Application withdrawApplicationByCandidate(UUID applicationId, UUID candidateId) {
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        if (!app.getCandidateId().equals(candidateId)) {
+            throw new RuntimeException("Access Denied");
+        }
+        Job job = jobService.getJobById(app.getJobId());
+        WithdrawalEligibilityResponse el = evaluateWithdrawalEligibility(applicationId, app, job);
+        if (!el.isAllowed()) {
+            throw new RuntimeException(el.getReason() != null ? el.getReason() : "Cannot withdraw application");
+        }
+
+        ApplicationStatus oldStatus = app.getStatus();
+        app.setStatus(ApplicationStatus.WITHDRAWN);
+        Application saved = applicationRepository.save(app);
+
+        historyRepository.save(ApplicationStageHistory.builder()
+                .applicationId(saved.getId())
+                .fromStage(oldStatus)
+                .toStage(ApplicationStatus.WITHDRAWN)
+                .changedBy(candidateId)
+                .note("Ứng viên rút đơn")
+                .build());
+
+        realtimeEventService.emitJobEvent(saved.getJobId(), "application:stage_changed", saved);
+        return saved;
+    }
+
+    private WithdrawalEligibilityResponse evaluateWithdrawalEligibility(UUID applicationId, Application app, Job job) {
+        if (app.getStatus() == ApplicationStatus.WITHDRAWN) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Đơn đã được rút trước đó.")
+                    .build();
+        }
+        if (app.getStatus() == ApplicationStatus.REJECTED) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Không thể rút đơn đã bị từ chối.")
+                    .build();
+        }
+        if (app.getStatus() == ApplicationStatus.HIRED) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Không thể rút đơn đã trúng tuyển.")
+                    .build();
+        }
+        if (app.getStatus() == ApplicationStatus.INTERVIEW || app.getStatus() == ApplicationStatus.OFFER) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Không thể rút đơn ở giai đoạn phỏng vấn hoặc offer.")
+                    .build();
+        }
+        if (!WITHDRAWABLE_STATUSES.contains(app.getStatus())) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Giai đoạn hiện tại không cho phép rút đơn.")
+                    .build();
+        }
+        if (job.getStatus() != JobStatus.OPEN) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Tin tuyển dụng không còn mở.")
+                    .build();
+        }
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        if (job.getExpiresAt() != null && !job.getExpiresAt().isAfter(now)) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Đã hết hạn nộp hồ sơ theo tin tuyển dụng.")
+                    .build();
+        }
+        if (!interviewRepository.findByApplicationId(applicationId).isEmpty()) {
+            return WithdrawalEligibilityResponse.builder()
+                    .allowed(false)
+                    .reason("Đã có lịch phỏng vấn — không thể rút đơn.")
+                    .build();
+        }
+        return WithdrawalEligibilityResponse.builder().allowed(true).reason(null).build();
     }
 
     @Override

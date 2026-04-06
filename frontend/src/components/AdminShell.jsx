@@ -12,6 +12,7 @@ import {
   X,
   Building2,
   Tags,
+  BarChart3,
 } from 'lucide-react'
 import { clearSession, getUser, normalizeUserRole } from '../lib/storage.js'
 import { applyTheme, getStoredTheme } from '../lib/theme.js'
@@ -91,6 +92,7 @@ export function AdminShell() {
   const navAdminUsers = path === '/admin/users'
   const navAdminCompanies = path === '/admin/companies'
   const navAdminSkills = path === '/admin/master-data/skills'
+  const navAdminAnalytics = path === '/admin/analytics'
   const navCompanyStaff = path === '/company/staff'
 
   return (
@@ -133,12 +135,21 @@ export function AdminShell() {
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            <NavLink to="/dashboard" className={navItemClass(navDashboard)}>
-              <LayoutDashboard className={iconClass(navDashboard)} />
-              <span>Tổng quan</span>
-            </NavLink>
+            {user && role === 'ADMIN' ? (
+              <NavLink to="/admin/analytics" className={navItemClass(navAdminAnalytics)}>
+                <BarChart3 className={iconClass(navAdminAnalytics)} />
+                <span>Thống kê tuyển dụng</span>
+              </NavLink>
+            ) : null}
 
-            {user && ['HR', 'ADMIN', 'COMPANY'].includes(user.role) ? (
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
+              <NavLink to="/dashboard" className={navItemClass(navDashboard)}>
+                <LayoutDashboard className={iconClass(navDashboard)} />
+                <span>Tổng quan</span>
+              </NavLink>
+            ) : null}
+
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
               <NavLink to="/dashboard/messages" className={navItemClass(navRecruiterMessages)}>
                 <MessageCircle className={iconClass(navRecruiterMessages)} />
                 <span>Tin nhắn</span>
@@ -150,13 +161,17 @@ export function AdminShell() {
               <span>Quản lý tin tuyển</span>
             </NavLink>
 
-            <NavLink to="/jobs/management" className={navItemClass(navApplicationTracking)}>
-              <ClipboardList className={iconClass(navApplicationTracking)} />
-              <span>Theo dõi hồ sơ</span>
-            </NavLink>
-            <p className="px-3 pb-1 pt-0 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-              Mở từng tin → <span className="text-slate-600 dark:text-slate-400">Ứng viên (Kanban)</span>
-            </p>
+            {user && ['HR', 'COMPANY'].includes(user.role) ? (
+              <>
+                <NavLink to="/jobs/management" className={navItemClass(navApplicationTracking)}>
+                  <ClipboardList className={iconClass(navApplicationTracking)} />
+                  <span>Theo dõi hồ sơ</span>
+                </NavLink>
+                <p className="px-3 pb-1 pt-0 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
+                  Mở từng tin → <span className="text-slate-600 dark:text-slate-400">Ứng viên (Kanban)</span>
+                </p>
+              </>
+            ) : null}
 
             {user && role === 'ADMIN' ? (
               <>

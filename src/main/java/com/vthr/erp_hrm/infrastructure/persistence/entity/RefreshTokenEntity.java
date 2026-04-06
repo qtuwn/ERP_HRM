@@ -35,4 +35,10 @@ public class RefreshTokenEntity {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;
+
+    @Column(name = "client_ip", length = 64)
+    private String clientIp;
+
+    @Column(name = "user_agent", length = 512)
+    private String userAgent;
 }

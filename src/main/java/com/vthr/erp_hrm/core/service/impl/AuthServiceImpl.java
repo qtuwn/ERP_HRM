@@ -11,15 +11,20 @@ import com.vthr.erp_hrm.core.repository.EmailVerificationTokenRepository;
 import com.vthr.erp_hrm.core.repository.PasswordResetTokenRepository;
 import com.vthr.erp_hrm.core.repository.RefreshTokenRepository;
 import com.vthr.erp_hrm.core.repository.UserRepository;
+import com.vthr.erp_hrm.core.service.AuditLogService;
 import com.vthr.erp_hrm.core.service.CompanyService;
+import com.vthr.erp_hrm.core.service.PasswordResetBruteForceProtection;
 import com.vthr.erp_hrm.core.model.Company;
 import com.vthr.erp_hrm.infrastructure.email.EmailQueueService;
 import com.vthr.erp_hrm.infrastructure.security.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.vthr.erp_hrm.core.service.AuthService;
 import java.util.Map;
@@ -43,6 +48,8 @@ public class AuthServiceImpl implements AuthService {
     private final EmailQueueService emailQueueService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+    private final PasswordResetBruteForceProtection passwordResetBruteForceProtection;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -58,8 +65,18 @@ public class AuthServiceImpl implements AuthService {
     @Value("${auth.otp-resend-cooldown-seconds:60}")
     private long otpResendCooldownSeconds;
 
+    @Value("${auth.password-reset-cooldown-seconds:60}")
+    private long passwordResetCooldownSeconds;
+
+    @Value("${auth.password-reset-link-expiration-hours:1}")
+    private long passwordResetLinkExpirationHours;
+
     @Value("${app.base-url:http://localhost:8080}")
     private String appBaseUrl;
+
+    /** URL gốc của SPA (đặt lại MK qua link). Mặc định trùng app.base-url khi FE phục vụ cùng origin. */
+    @Value("${app.public-web-url:${app.base-url:http://localhost:8080}}")
+    private String publicWebUrl;
 
     @Value("${auth.email-verification-demo-log-only:false}")
     private boolean emailVerificationDemoLogOnly;
@@ -97,14 +114,13 @@ public class AuthServiceImpl implements AuthService {
         String refreshTokenStr = jwtService.generateRefreshToken();
         String tokenHash = jwtService.hashToken(refreshTokenStr);
 
-        RefreshToken refreshToken = RefreshToken.builder()
+        var refreshBuilder = RefreshToken.builder()
                 .userId(user.getId())
                 .tokenHash(tokenHash)
                 .expiresAt(ZonedDateTime.now().plus(refreshExpirationMs, ChronoUnit.MILLIS))
-                .revoked(false)
-                .build();
-
-        refreshTokenRepository.save(refreshToken);
+                .revoked(false);
+        applyHttpClientHints(refreshBuilder);
+        refreshTokenRepository.save(refreshBuilder.build());
 
         return AuthTokens.builder()
                 .accessToken(accessToken)
@@ -137,14 +153,13 @@ public class AuthServiceImpl implements AuthService {
         String newRefreshTokenStr = jwtService.generateRefreshToken();
         String newTokenHash = jwtService.hashToken(newRefreshTokenStr);
 
-        RefreshToken newRefreshToken = RefreshToken.builder()
+        var newRefreshBuilder = RefreshToken.builder()
                 .userId(user.getId())
                 .tokenHash(newTokenHash)
                 .expiresAt(ZonedDateTime.now().plus(refreshExpirationMs, ChronoUnit.MILLIS))
-                .revoked(false)
-                .build();
-
-        refreshTokenRepository.save(newRefreshToken);
+                .revoked(false);
+        applyHttpClientHints(newRefreshBuilder);
+        refreshTokenRepository.save(newRefreshBuilder.build());
 
         return AuthTokens.builder()
                 .accessToken(newAccessToken)
@@ -307,12 +322,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void requestForgotPasswordOtp(String email) {
+        passwordResetBruteForceProtection.assertForgotPasswordRequestAllowed(currentClientIp());
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getStatus() == AccountStatus.DELETED || user.getStatus() == AccountStatus.SUSPENDED) {
             throw new RuntimeException("Tai khoan khong the reset mat khau");
         }
+
+        enforcePasswordResetCooldown(user.getId());
 
         ZonedDateTime now = ZonedDateTime.now();
         for (PasswordResetToken token : passwordResetTokenRepository.findActiveByUserId(user.getId())) {
@@ -341,23 +360,73 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void resetPasswordWithOtp(String email, String otp, String newPassword) {
+    public void requestForgotPasswordMagicLink(String email) {
+        passwordResetBruteForceProtection.assertForgotPasswordRequestAllowed(currentClientIp());
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (user.getStatus() == AccountStatus.DELETED || user.getStatus() == AccountStatus.SUSPENDED) {
+            throw new RuntimeException("Tai khoan khong the reset mat khau");
+        }
+
+        enforcePasswordResetCooldown(user.getId());
+
+        ZonedDateTime now = ZonedDateTime.now();
+        for (PasswordResetToken token : passwordResetTokenRepository.findActiveByUserId(user.getId())) {
+            token.setUsedAt(now);
+            passwordResetTokenRepository.save(token);
+        }
+
+        String rawToken = UUID.randomUUID().toString().replace("-", "");
+        String tokenHash = jwtService.hashToken(rawToken);
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .userId(user.getId())
+                .tokenHash(tokenHash)
+                .expiresAt(now.plus(passwordResetLinkExpirationHours, ChronoUnit.HOURS))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        String encoded = URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        String resetUrl = stripTrailingSlashes(publicWebUrl) + "/forgot-password/confirm?token=" + encoded;
+
+        emailQueueService.enqueueEmail(
+                user.getEmail(),
+                "Link dat lai mat khau VTHR",
+                "forgot_password_link",
+                Map.of(
+                        "fullName", user.getFullName(),
+                        "resetUrl", resetUrl,
+                        "hours", passwordResetLinkExpirationHours));
+    }
+
+    @Override
+    public void resetPasswordWithOtp(String email, String otp, String newPassword) {
+        passwordResetBruteForceProtection.assertForgotPasswordConfirmAllowed(currentClientIp());
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String emailKey = normalizeEmailKey(user.getEmail());
+        passwordResetBruteForceProtection.assertEmailNotLockedForPasswordReset(emailKey);
+
         String tokenHash = jwtService.hashToken(buildScopedOtpKey(user.getEmail(), otp));
         PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new RuntimeException("OTP khong hop le"));
+                .orElse(null);
 
-        if (!resetToken.getUserId().equals(user.getId())) {
+        if (resetToken == null || !resetToken.getUserId().equals(user.getId())) {
+            passwordResetBruteForceProtection.recordPasswordResetConfirmFailure(emailKey);
             throw new RuntimeException("OTP khong hop le");
         }
 
         if (resetToken.getUsedAt() != null) {
+            passwordResetBruteForceProtection.recordPasswordResetConfirmFailure(emailKey);
             throw new RuntimeException("OTP da duoc su dung");
         }
 
         if (resetToken.getExpiresAt().isBefore(ZonedDateTime.now())) {
+            passwordResetBruteForceProtection.recordPasswordResetConfirmFailure(emailKey);
             throw new RuntimeException("OTP da het han");
         }
 
@@ -366,6 +435,45 @@ public class AuthServiceImpl implements AuthService {
 
         resetToken.setUsedAt(ZonedDateTime.now());
         passwordResetTokenRepository.save(resetToken);
+
+        passwordResetBruteForceProtection.clearPasswordResetConfirmFailures(emailKey);
+        auditLogService.logAction(user.getId(), "RESET_PASSWORD_OTP", "User", user.getId(), "Password reset via OTP");
+    }
+
+    @Override
+    public void resetPasswordWithMagicLink(String token, String newPassword) {
+        passwordResetBruteForceProtection.assertForgotPasswordConfirmAllowed(currentClientIp());
+
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("Token khong hop le");
+        }
+        String raw = token.trim();
+        String tokenHash = jwtService.hashToken(raw);
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new RuntimeException("Lien ket dat lai mat khau khong hop le hoac da het han"));
+
+        User user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String emailKey = normalizeEmailKey(user.getEmail());
+        passwordResetBruteForceProtection.assertEmailNotLockedForPasswordReset(emailKey);
+
+        if (resetToken.getUsedAt() != null) {
+            throw new RuntimeException("Lien ket dat lai mat khau da duoc su dung");
+        }
+
+        if (resetToken.getExpiresAt().isBefore(ZonedDateTime.now())) {
+            throw new RuntimeException("Lien ket dat lai mat khau da het han");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        resetToken.setUsedAt(ZonedDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+
+        passwordResetBruteForceProtection.clearPasswordResetConfirmFailures(emailKey);
+        auditLogService.logAction(user.getId(), "RESET_PASSWORD_LINK", "User", user.getId(), "Password reset via magic link");
     }
 
     @Override
@@ -377,6 +485,7 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        auditLogService.logAction(userId, "CHANGE_PASSWORD", "User", userId, "User changed password while logged in");
     }
 
     private void createEmailVerificationAndDispatch(User user) {
@@ -461,6 +570,90 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("Vui long cho " + wait + " giay truoc khi gui lai OTP");
             }
         });
+    }
+
+    private void enforcePasswordResetCooldown(UUID userId) {
+        ZonedDateTime now = ZonedDateTime.now();
+        passwordResetTokenRepository.findLatestByUserId(userId).ifPresent(latest -> {
+            if (latest.getCreatedAt() == null) {
+                return;
+            }
+            long seconds = Duration.between(latest.getCreatedAt(), now).getSeconds();
+            if (seconds < passwordResetCooldownSeconds) {
+                long wait = passwordResetCooldownSeconds - seconds;
+                throw new RuntimeException("Vui long cho " + wait + " giay truoc khi yeu cau OTP moi");
+            }
+        });
+    }
+
+    private String currentClientIp() {
+        try {
+            var attrs = RequestContextHolder.getRequestAttributes();
+            if (!(attrs instanceof ServletRequestAttributes servletRequestAttributes)) {
+                return null;
+            }
+            HttpServletRequest req = servletRequestAttributes.getRequest();
+            if (req == null) {
+                return null;
+            }
+            String xff = req.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                String first = xff.split(",")[0].trim();
+                if (!first.isEmpty()) {
+                    return first.length() > 64 ? first.substring(0, 64) : first;
+                }
+            }
+            String ip = req.getRemoteAddr();
+            if (ip != null && ip.length() > 64) {
+                return ip.substring(0, 64);
+            }
+            return ip;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String normalizeEmailKey(String email) {
+        if (email == null) {
+            return "";
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String stripTrailingSlashes(String url) {
+        if (url == null) {
+            return "";
+        }
+        String s = url.trim();
+        while (s.endsWith("/")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s;
+    }
+
+    private static void applyHttpClientHints(RefreshToken.RefreshTokenBuilder builder) {
+        try {
+            var attrs = RequestContextHolder.getRequestAttributes();
+            if (!(attrs instanceof ServletRequestAttributes servletRequestAttributes)) {
+                return;
+            }
+            HttpServletRequest req = servletRequestAttributes.getRequest();
+            if (req == null) {
+                return;
+            }
+            String ip = req.getRemoteAddr();
+            if (ip != null && ip.length() > 64) {
+                ip = ip.substring(0, 64);
+            }
+            String ua = req.getHeader("User-Agent");
+            if (ua != null && ua.length() > 512) {
+                ua = ua.substring(0, 512);
+            }
+            builder.clientIp(ip);
+            builder.userAgent(ua);
+        } catch (Exception ignored) {
+            // không có request context (unit test / async)
+        }
     }
 
     private String generateOtp() {

@@ -7,6 +7,9 @@ export function ForgotPasswordConfirmPage() {
   const [sp] = useSearchParams()
   const nav = useNavigate()
 
+  const linkToken = sp.get('token') || ''
+  const isLinkFlow = Boolean(linkToken)
+
   const [email, setEmail] = useState(sp.get('email') || '')
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -15,9 +18,11 @@ export function ForgotPasswordConfirmPage() {
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    setEmail(sp.get('email') || email)
+    if (!isLinkFlow) {
+      setEmail(sp.get('email') || email)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sp])
+  }, [sp, isLinkFlow])
 
   async function submit(e) {
     e.preventDefault()
@@ -25,11 +30,15 @@ export function ForgotPasswordConfirmPage() {
     setMsg('')
     setLoading(true)
     try {
-      await api.post('/api/auth/forgot-password/confirm', { email, otp, newPassword })
+      if (isLinkFlow) {
+        await api.post('/api/auth/forgot-password/confirm-link', { token: linkToken, newPassword })
+      } else {
+        await api.post('/api/auth/forgot-password/confirm', { email, otp, newPassword })
+      }
       setMsg('Đặt lại mật khẩu thành công. Đang chuyển về đăng nhập…')
       setTimeout(() => nav('/login'), 800)
     } catch (e2) {
-      setErr(e2?.message || 'OTP không hợp lệ hoặc đã hết hạn.')
+      setErr(e2?.message || 'Không thể đặt lại mật khẩu. Kiểm tra OTP/link hoặc thử lại sau.')
     } finally {
       setLoading(false)
     }
@@ -38,38 +47,46 @@ export function ForgotPasswordConfirmPage() {
   return (
     <section className="max-w-md mx-auto mt-16 p-8 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Đặt lại mật khẩu</h1>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Nhập OTP và mật khẩu mới.</p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        {isLinkFlow
+          ? 'Bạn đã mở link từ email. Chỉ cần nhập mật khẩu mới.'
+          : 'Nhập OTP và mật khẩu mới.'}
+      </p>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 outline-none"
-            />
-          </div>
-        </div>
+        {!isLinkFlow ? (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  required
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 outline-none"
+                />
+              </div>
+            </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">OTP</label>
-          <div className="relative">
-            <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 outline-none"
-              placeholder="6 chữ số"
-            />
-          </div>
-        </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">OTP</label>
+              <div className="relative">
+                <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 outline-none"
+                  placeholder="6 chữ số"
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Mật khẩu mới</label>
@@ -80,9 +97,9 @@ export function ForgotPasswordConfirmPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               type="password"
               required
-              minLength={6}
+              minLength={isLinkFlow ? 8 : 6}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30 outline-none"
-              placeholder="Ít nhất 6 ký tự"
+              placeholder={isLinkFlow ? 'Ít nhất 8 ký tự' : 'Ít nhất 6 ký tự'}
             />
           </div>
         </div>
@@ -109,7 +126,7 @@ export function ForgotPasswordConfirmPage() {
 
       <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
         <Link to="/forgot-password" className="text-[#2563eb] font-medium hover:underline">
-          Gửi lại OTP
+          {isLinkFlow ? 'Yêu cầu link/OTP mới' : 'Gửi lại OTP'}
         </Link>
         {' · '}
         <Link to="/login" className="text-[#2563eb] font-medium hover:underline">

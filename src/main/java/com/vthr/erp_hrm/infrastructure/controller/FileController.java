@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -84,6 +85,52 @@ public class FileController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/task-docs/{applicationId}/{taskId}/{filename}")
+    public ResponseEntity<Resource> downloadTaskDocument(
+            @PathVariable UUID applicationId,
+            @PathVariable UUID taskId,
+            @PathVariable String filename,
+            @RequestParam long expires,
+            @RequestParam String signature) {
+
+        String objectPath = applicationId + "/" + taskId + "/" + filename;
+        if (!signedUrlService.verifySignature(objectPath, expires, signature)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (filename.contains("..")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            Path file = Paths.get(uploadDir).resolve("task-docs").resolve(objectPath).normalize();
+            Path root = Paths.get(uploadDir).resolve("task-docs").normalize();
+            if (!file.startsWith(root)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            Resource resource = new UrlResource(file.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            String lower = filename.toLowerCase(Locale.ROOT);
+            String contentType = "application/octet-stream";
+            if (lower.endsWith(".pdf")) {
+                contentType = "application/pdf";
+            } else if (lower.endsWith(".docx")) {
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            } else if (lower.endsWith(".png")) {
+                contentType = "image/png";
+            } else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+                contentType = "image/jpeg";
+            }
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

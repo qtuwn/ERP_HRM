@@ -26,7 +26,9 @@ public class SpaForwardingController {
             "/messages",
             "/notifications",
             "/profile",
+            "/profile/sessions",
             "/admin/users",
+            "/admin/analytics",
             "/company/staff",
     })
     public String forwardSpaShell() {
@@ -45,6 +47,16 @@ public class SpaForwardingController {
 
     @GetMapping("/jobs/{id:[0-9a-fA-F\\-]{36}}/kanban")
     public String forwardJobKanban() {
+        return "forward:/index.html";
+    }
+
+    @GetMapping("/candidate/applications/{id:[0-9a-fA-F\\-]{36}}/tasks")
+    public String forwardCandidateApplicationTasks() {
+        return "forward:/index.html";
+    }
+
+    @GetMapping("/dashboard/applications/{id:[0-9a-fA-F\\-]{36}}/tasks")
+    public String forwardRecruiterApplicationTasks() {
         return "forward:/index.html";
     }
 }

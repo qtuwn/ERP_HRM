@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { getUser, normalizeUserRole } from '../lib/storage.js'
-import { Eye, Pencil, Plus, RefreshCw, Trash2, CircleCheck, Ban } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import { QuillEditor } from '../components/QuillEditor.jsx'
+import { VirtualizedJobsManagementList } from '../components/VirtualizedJobsManagementList.jsx'
 
 function statusLabel(status) {
   const map = { DRAFT: 'Bản nháp', OPEN: 'Đang tuyển', CLOSED: 'Đã đóng' }
@@ -56,12 +57,15 @@ const emptyForm = (department) => ({
 export function JobsManagementPage() {
   const user = useMemo(() => getUser(), [])
   const userRole = useMemo(() => normalizeUserRole(user?.role), [user])
+  const canOpenKanban = userRole === 'HR' || userRole === 'COMPANY'
+  const canCreateOrEditJobs = userRole === 'HR' || userRole === 'COMPANY'
   const userDepartment = user?.department || ''
 
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(0)
-  const [size] = useState(10)
+  const [size] = useState(40)
+  const [sort, setSort] = useState('createdAt,desc')
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
@@ -71,29 +75,31 @@ export function JobsManagementPage() {
   const [form, setForm] = useState(() => emptyForm(userDepartment))
   const [saving, setSaving] = useState(false)
 
-  async function fetchJobs(nextPage = page) {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(nextPage),
-        size: String(size),
-        sort: 'createdAt,desc',
-      })
-      const res = await api.get(`/api/jobs/department?${params.toString()}`)
-      const payload = res?.data || {}
-      setJobs(payload.content || [])
-      setTotalPages(payload.totalPages || 0)
-      setTotalElements(payload.totalElements || 0)
-      setPage(payload.number || 0)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchJobs = useCallback(
+    async (nextPage) => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          page: String(nextPage),
+          size: String(size),
+          sort,
+        })
+        const res = await api.get(`/api/jobs/department?${params.toString()}`)
+        const payload = res?.data || {}
+        setJobs(payload.content || [])
+        setTotalPages(payload.totalPages || 0)
+        setTotalElements(payload.totalElements || 0)
+        setPage(payload.number ?? nextPage)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [size, sort]
+  )
 
   useEffect(() => {
-    fetchJobs(0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    fetchJobs(page)
+  }, [page, fetchJobs])
 
   function openCreate() {
     setEditingId(null)
@@ -102,33 +108,36 @@ export function JobsManagementPage() {
     setShowModal(true)
   }
 
-  function openEdit(job) {
-    setEditingId(job.id)
-    setStep(1)
-    setForm({
-      title: job.title || '',
-      industry: job.industry || '',
-      level: job.level || '',
-      jobType: job.jobType || '',
-      salaryType: job.salaryType || 'agreed',
-      salaryMin: job.salaryMin ?? null,
-      salaryMax: job.salaryMax ?? null,
-      salaryCurrency: job.salaryCurrency || 'VND',
-      description: job.description || '',
-      requirements: job.requirements || '',
-      benefits: job.benefits || '',
-      tags: job.tags || '',
-      companyName: job.companyName || '',
-      address: job.address || '',
-      city: job.city || '',
-      companySize: job.companySize || '',
-      department: job.department || userDepartment,
-      notificationEmail: job.notificationEmail || '',
-      numberOfPositions: job.numberOfPositions || 1,
-      expiresAt: toDateTimeLocal(job.expiresAt),
-    })
-    setShowModal(true)
-  }
+  const openEdit = useCallback(
+    (job) => {
+      setEditingId(job.id)
+      setStep(1)
+      setForm({
+        title: job.title || '',
+        industry: job.industry || '',
+        level: job.level || '',
+        jobType: job.jobType || '',
+        salaryType: job.salaryType || 'agreed',
+        salaryMin: job.salaryMin ?? null,
+        salaryMax: job.salaryMax ?? null,
+        salaryCurrency: job.salaryCurrency || 'VND',
+        description: job.description || '',
+        requirements: job.requirements || '',
+        benefits: job.benefits || '',
+        tags: job.tags || '',
+        companyName: job.companyName || '',
+        address: job.address || '',
+        city: job.city || '',
+        companySize: job.companySize || '',
+        department: job.department || userDepartment,
+        notificationEmail: job.notificationEmail || '',
+        numberOfPositions: job.numberOfPositions || 1,
+        expiresAt: toDateTimeLocal(job.expiresAt),
+      })
+      setShowModal(true)
+    },
+    [userDepartment]
+  )
 
   function closeModal() {
     setShowModal(false)
@@ -168,37 +177,46 @@ export function JobsManagementPage() {
     }
   }
 
-  async function publishJob(job) {
-    try {
-      await api.patch(`/api/jobs/${job.id}/publish`, {})
-      await fetchJobs(page)
-    } catch (e) {
-      alert(e?.message || 'Mở tuyển thất bại')
-    }
-  }
+  const publishJob = useCallback(
+    async (job) => {
+      try {
+        await api.patch(`/api/jobs/${job.id}/publish`, {})
+        await fetchJobs(page)
+      } catch (e) {
+        alert(e?.message || 'Mở tuyển thất bại')
+      }
+    },
+    [page, fetchJobs]
+  )
 
-  async function closeJob(job) {
-    try {
-      await api.patch(`/api/jobs/${job.id}/close`, {})
-      await fetchJobs(page)
-    } catch (e) {
-      alert(e?.message || 'Đóng tuyển thất bại')
-    }
-  }
+  const closeJob = useCallback(
+    async (job) => {
+      try {
+        await api.patch(`/api/jobs/${job.id}/close`, {})
+        await fetchJobs(page)
+      } catch (e) {
+        alert(e?.message || 'Đóng tuyển thất bại')
+      }
+    },
+    [page, fetchJobs]
+  )
 
-  async function deleteJob(job) {
-    if (!confirm(`Xóa tin "${job.title}"?`)) return
-    try {
-      await api.delete(`/api/jobs/${job.id}`)
-      await fetchJobs(0)
-    } catch (e) {
-      alert(e?.message || 'Xóa thất bại')
-    }
-  }
+  const deleteJob = useCallback(
+    async (job) => {
+      if (!confirm(`Xóa tin "${job.title}"?`)) return
+      try {
+        await api.delete(`/api/jobs/${job.id}`)
+        await fetchJobs(0)
+      } catch (e) {
+        alert(e?.message || 'Xóa thất bại')
+      }
+    },
+    [fetchJobs]
+  )
 
-  function goKanban(jobId) {
+  const goKanban = useCallback((jobId) => {
     window.location.href = `/jobs/${jobId}/kanban`
-  }
+  }, [])
 
   return (
     <div className="w-full min-w-0 max-w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -210,18 +228,42 @@ export function JobsManagementPage() {
               ? 'Tất cả tin tuyển của công ty (theo mã công ty trên hệ thống), không phụ thuộc tên hiển thị.'
               : userRole === 'HR'
                 ? 'Chỉ các tin do tài khoản của bạn tạo, trong phạm vi công ty (theo mã công ty).'
-                : 'Tạo, chỉnh sửa, mở/đóng tuyển dụng và xóa tin (ADMIN: danh sách theo API /department — toàn hệ thống nếu không lọc).'}
+                : 'Admin: xem toàn bộ tin, chỉ mở/đóng/xóa (kiểm duyệt) — không tạo/sửa nội dung tin, không Kanban/chat (HR / công ty).'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1d4ed8]"
-          >
-            <Plus className="h-4 w-4" />
-            Tạo tin tuyển dụng mới
-          </button>
+          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+            <span className="whitespace-nowrap font-medium">Sắp xếp</span>
+            <select
+              value={sort}
+              onChange={(e) => {
+                setSort(e.target.value)
+                setPage(0)
+              }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <option value="createdAt,desc">Mới tạo nhất</option>
+              <option value="createdAt,asc">Cũ nhất</option>
+              <option value="title,asc">Tiêu đề A → Z</option>
+              <option value="title,desc">Tiêu đề Z → A</option>
+              <option value="expiresAt,asc">Hạn nộp sớm → muộn</option>
+              <option value="expiresAt,desc">Hạn nộp muộn → sớm</option>
+              <option value="status,asc">Trạng thái (A→Z)</option>
+              <option value="status,desc">Trạng thái (Z→A)</option>
+              <option value="salaryMax,desc">Lương tối đa cao → thấp</option>
+              <option value="salaryMax,asc">Lương tối đa thấp → cao</option>
+            </select>
+          </label>
+          {canCreateOrEditJobs ? (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1d4ed8]"
+            >
+              <Plus className="h-4 w-4" />
+              Tạo tin tuyển dụng mới
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => fetchJobs(page)}
@@ -240,109 +282,24 @@ export function JobsManagementPage() {
           </div>
         ) : (
           <>
-            <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain">
-              <table className="w-full min-w-[720px] table-fixed divide-y divide-slate-200 dark:divide-slate-700">
-                <thead className="bg-slate-50 dark:bg-slate-800/80">
-                  <tr>
-                    <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Tiêu đề
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Cấp bậc
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Loại hình
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Trạng thái
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Hạn nộp
-                    </th>
-                    <th className="w-[200px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Hành động
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {jobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
-                      <td className="px-4 py-4">
-                        <p className="font-medium text-slate-900 dark:text-white">{job.title || 'Không có tiêu đề'}</p>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">{job.level || '-'}</td>
-                      <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">{job.jobType || '-'}</td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={[
-                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
-                            statusClass(job.status),
-                          ].join(' ')}
-                        >
-                          {statusLabel(job.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                        {job.expiresAt ? new Date(job.expiresAt).toLocaleString('vi-VN') : '-'}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => goKanban(job.id)}
-                            title="Xem ứng viên (Kanban)"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-[#2563eb] transition hover:bg-[#2563eb]/10 dark:border-slate-600 dark:hover:bg-[#2563eb]/20"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(job)}
-                            title="Sửa tin"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          {job.status !== 'OPEN' ? (
-                            <button
-                              type="button"
-                              onClick={() => publishJob(job)}
-                              title="Mở tuyển"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                            >
-                              <CircleCheck className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => closeJob(job)}
-                              title="Đóng tuyển"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 text-amber-700 transition hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40"
-                            >
-                              <Ban className="h-4 w-4" />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => deleteJob(job)}
-                            title="Xóa tin"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!loading && jobs.length === 0 ? (
+            {jobs.length > 0 ? (
+              <VirtualizedJobsManagementList
+                jobs={jobs}
+                statusLabel={statusLabel}
+                statusClass={statusClass}
+                showKanbanButton={canOpenKanban}
+                showEditButton={canCreateOrEditJobs}
+                goKanban={goKanban}
+                openEdit={openEdit}
+                publishJob={publishJob}
+                closeJob={closeJob}
+                deleteJob={deleteJob}
+              />
+            ) : (
               <div className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                 Chưa có tin tuyển dụng nào.
               </div>
-            ) : null}
+            )}
 
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-4 dark:border-slate-700">
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -374,13 +331,13 @@ export function JobsManagementPage() {
         )}
       </div>
 
-      {showModal ? (
+      {showModal && canCreateOrEditJobs ? (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center px-4 py-16">
             <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
 
             <div className="relative max-h-[90vh] w-full min-w-0 max-w-3xl overflow-y-auto overflow-x-hidden rounded-xl bg-white shadow-xl dark:bg-slate-900">
-              <div className="sticky top-0 bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-4 text-white">
+              <div className="sticky top-0 bg-[#2563eb] px-6 py-4 text-white">
                 <h2 className="text-xl font-bold">
                   {editingId ? 'Cập nhật tin tuyển dụng' : 'Tạo tin tuyển dụng mới'}
                 </h2>

@@ -118,7 +118,7 @@ components/messaging/
 |----|------|----------|----------|
 | **A1** | Định nghĩa type **`ChatThread`** (FE) | `{ applicationId, title, subtitle, jobId?, status?, lastMessageAt?, lastPreview?, unread? }` — map từ API hiện tại hoặc DTO mới. | Nhỏ |
 | **A2** | Deep link **ứng viên** | Hỗ trợ `/messages?applicationId=<uuid>`: mở đúng thread khi vào từ thông báo/email sau này. | [x] Đồng bộ URL khi đổi thread. |
-| **A3** | Deep link **HR** (sau khi có route) | `/recruiter/messages?applicationId=&jobId=` đồng bộ state cột trái + panel phải. | Nhỏ |
+| **A3** | Deep link **HR** (sau khi có route) | `/dashboard/messages?jobId=&applicationId=` (và chỉ `applicationId` → chế độ tất cả tin) đồng bộ sidebar + panel. | [x] |
 
 ### Phase B — Ứng viên: trang hub 3 cột
 
@@ -134,23 +134,23 @@ components/messaging/
 
 | ID | Task | Chi tiết | Ước tính |
 |----|------|----------|----------|
-| **C1** | Thiết kế **`GET /api/inbox/threads`** (hoặc tên tương đương) | Trả về page các thread trong scope user: ứng viên = các application của mình; HR = applications của các job được phép (theo `ApplicationAccessService` / company). | Lớn |
-| **C2** | Trường **preview** | Join/subquery: `lastMessage.content`, `lastMessage.createdAt` (giới hạn độ dài); optional `unreadCount` nếu có bảng read receipt (nếu chưa có → bỏ qua hoặc phase sau). | TB–Lớn |
-| **C3** | Unit test service | Mock repo, kiểm tra phân quyền HR chỉ thấy job/company của mình. | TB |
+| **C1** | Thiết kế **`GET /api/inbox/recruiter/threads`** | Page thread recruiter: optional `jobId`; không có `jobId` thì gom job trong scope (HR = job do user tạo + cùng company; COMPANY = job công ty; ADMIN = tối đa 2000 job). Cùng rule job với `ApplicationAccessService.requireRecruiterForJobTopic` khi lọc theo tin. | [x] |
+| **C2** | Trường **preview** | `lastMessagePreview` (cắt ~200 ký tự), `lastMessageAt` — native query + `LATERAL` tin cuối theo `application_id`. `unreadCount` chưa làm (phase sau nếu có read receipt). | [x] |
+| **C3** | Unit test service | `InboxServiceImplTest`: mock `ApplicationAccessService`, `JobService`, `UserService`, `RecruiterInboxNativeQuery` — jobId filter gọi guard; HR/COMPANY/ADMIN resolve đúng tập job; HR không `companyId` → empty; preview dài bị cắt. | [x] |
 
 *Nếu chưa làm C1 ngay:* HR có thể dùng **C4** tạm thời.
 
 | ID | Task | Chi tiết | Ước tính |
 |----|------|----------|----------|
-| **C4** | **Workaround FE** cho HR | Chọn job từ dropdown → gọi `GET /api/jobs/{jobId}/applications/kanban` → map sang `ConversationList`; không có “tất cả job” cho đến khi có C1. | TB |
+| **C4** | **Workaround FE** cho HR | (Đã thay) Trước đây Kanban list; nay `RecruiterMessagesPage` dùng **C1**; giữ API Kanban cho bảng Kanban. | [~] Không còn là inbox chính |
 
 ### Phase D — HR: trang hub trong AdminShell
 
 | ID | Task | Chi tiết | Ước tính |
 |----|------|----------|----------|
 | **D1** | Route + menu | `App.jsx`: route `/dashboard/messages` trong `AdminShell`; sidebar **Tin nhắn** (HR / COMPANY / ADMIN). `SpaForwardingController` forward `/dashboard/messages`. | [x] |
-| **D2** | Trang **`RecruiterMessagesPage`** | Chọn tin (`/api/jobs/department`) → ứng viên (`/api/jobs/{id}/applications/kanban`) → `ApplicationChatPanel`; query `jobId` + `applicationId`. | [x] |
-| **D3** | Đồng bộ với Kanban | Nút chat trên Kanban: **Option 1** giữ `open-chat`; **Option 2** `navigate` tới hub + query params (nhất quán UX). | Nhỏ |
+| **D2** | Trang **`RecruiterMessagesPage`** | Chọn tin (`/api/jobs/department`) + **inbox** `GET /api/inbox/recruiter/threads` (theo `jobId` hoặc tất cả tin được phép); `ApplicationChatPanel`; query `jobId` + `applicationId`. | [x] |
+| **D3** | Đồng bộ với Kanban | Nút chat trên Kanban: **`navigate('/dashboard/messages?jobId=&applicationId=')`** (hub tin nhắn). | [x] |
 | **D4** | (Tuỳ chọn) Ẩn/bớt **`ChatWidget`** trên admin | Tránh hai nơi cùng mở một thread; hoặc widget chỉ redirect. | Nhỏ |
 
 ### Phase E — Refactor lõi & chất lượng

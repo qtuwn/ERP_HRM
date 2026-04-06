@@ -70,6 +70,8 @@ public class GlobalExceptionHandler {
                 status = HttpStatus.UNAUTHORIZED;
             } else if (msg.contains("rate limit")) {
                 status = HttpStatus.TOO_MANY_REQUESTS;
+            } else if (msg.contains("tam thoi bi khoa") || msg.contains("temporarily blocked")) {
+                status = HttpStatus.TOO_MANY_REQUESTS;
             } else if (msg.contains("access denied")) {
                 status = HttpStatus.FORBIDDEN;
             } else if (msg.contains("not found")) {

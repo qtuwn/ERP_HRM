@@ -23,6 +23,10 @@ export function getAccessToken() {
   return localStorage.getItem(TOKEN_KEY) || ''
 }
 
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || ''
+}
+
 export function getUser() {
   const raw = localStorage.getItem(USER_KEY)
   if (!raw) return null
@@ -31,6 +35,17 @@ export function getUser() {
   } catch {
     return null
   }
+}
+
+/**
+ * API (Jackson) trả về boolean trạng thái khóa dưới key `active`, không phải `isActive`.
+ * Nếu cả hai đều thiếu (user cũ trong localStorage), coi là đang hoạt động vì đã đăng nhập được.
+ */
+export function isUserAccountActive(user) {
+  if (!user || typeof user !== 'object') return false
+  if (user.active === false || user.isActive === false) return false
+  if (user.active === true || user.isActive === true) return true
+  return true
 }
 
 /** Chuẩn hóa role từ JWT/user JSON (ADMIN, ROLE_HR, …) → ADMIN | HR | COMPANY | CANDIDATE */
